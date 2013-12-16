@@ -2,9 +2,9 @@
 #include "Firmata.h"  // protocol library for communicating with software
 #include "Custom_pwm.h" // expose code to change max pwm frequency on pins
 
-const int x_step_pin = 5;
-const int y_step_pin = 6;
-const int x_dir_pin = 4;
+const int X_STEP_PIN = 5;
+const int Y_STEP_PIN = 6;
+const int X_DIR_PIN = 4;
 const int X_STEPS_PER_REV = 200 * 32;
 
 const int pwm_divisor = 8; // arduino default = 64
@@ -25,11 +25,11 @@ void setup() {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
     
-  pinMode(x_step_pin, OUTPUT);
-  pinMode(x_dir_pin, OUTPUT);
+  pinMode(X_STEP_PIN, OUTPUT);
+  pinMode(X_DIR_PIN, OUTPUT);
 
   // Make the timer run faster
-  cust.setPwmFrequency(x_step_pin, 8); // this would be for laser galvos
+  cust.setPwmFrequency(X_STEP_PIN, 8); // this would be for laser galvos
 }
 
 void loop() {
@@ -38,7 +38,7 @@ void loop() {
   //while(Firmata.available()) {
   //  Firmata.processInput();
   //}
-  int step_pins[] = {x_step_pin};
+  int step_pins[] = {X_STEP_PIN};
   step(step_pins, 200*16, 0);
   cust.wait(1000);
 }
