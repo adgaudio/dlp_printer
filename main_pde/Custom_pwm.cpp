@@ -31,9 +31,11 @@
  * 
  * Thanks to macegr of the Arduino forums for his documentation of the
  * PWM frequency divisors. His post can be viewed at:
- *   http://www.arduino.cc/cgi-bin/yabb2/YaBB.pl?num=1235060559/0#4
- */
+    */
+int current_divisor = ARDUINO_DEFAULT_PWM_DIVISOR;
+
 void CustomPwm::setPwmFrequency(int pin, int divisor) {
+  current_divisor = divisor;
   byte mode;
   if(pin == 5 || pin == 6 || pin == 9 || pin == 10) {
     switch(divisor) {
@@ -62,4 +64,10 @@ void CustomPwm::setPwmFrequency(int pin, int divisor) {
     }
     TCCR2B = TCCR2B & 0b11111000 | mode;
   }
+}
+
+void CustomPwm::wait(float millisecs) {
+  // default delay will have unexpected behavior with custom pwm
+  // Also, floating point arithmetic sucks!  It's very inaccurate
+  delay((float)millisecs * ARDUINO_DEFAULT_PWM_DIVISOR / (float) (current_divisor));
 }

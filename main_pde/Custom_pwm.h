@@ -8,11 +8,15 @@
  */
 #ifndef Custom_pwm_h
 #define Custom_pwm_h
+#define ARDUINO_DEFAULT_PWM_DIVISOR 64
 
 #include <Arduino.h>
 
 class CustomPwm {
   public:
     void setPwmFrequency(int pin, int divisor);
+    void wait(float millisecs);
+  private:
+    int current_divisor;
 };
 #endif
