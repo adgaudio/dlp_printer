@@ -69,5 +69,5 @@ void CustomPwm::setPwmFrequency(int pin, int divisor) {
 void CustomPwm::wait(float millisecs) {
   // default delay will have unexpected behavior with custom pwm
   // Also, floating point arithmetic sucks!  It's very inaccurate
-  delay((float)millisecs * ARDUINO_DEFAULT_PWM_DIVISOR / (float) (current_divisor));
+  delay((float)millisecs * (float)ARDUINO_DEFAULT_PWM_DIVISOR / (float) (current_divisor));
 }

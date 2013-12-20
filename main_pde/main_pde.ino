@@ -1,17 +1,13 @@
 #include "avr/wdt.h"  // watchdog resets avr chip if it hangs
-#include "Custom_pwm.h" // expose code to change max pwm frequency on pins
 
 const int X_STEP_PIN = 5;
 const int Y_STEP_PIN = 6;
 const int X_DIR_PIN = 4;
 const int X_STEPS_PER_REV = 200 * 32;
 int PIN_MAP[] = {X_STEP_PIN, Y_STEP_PIN};
-int NUM_PINS = sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
+int NUM_PINS = 1; //sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
 
-// Custom PWM and Watchdog config
-int PWM_DIVISOR = 8; // arduino default = 64
-CustomPwm custpwm;
-int WDT_DELAY = 8 * ARDUINO_DEFAULT_PWM_DIVISOR / (float) (PWM_DIVISOR); // how long before watchdog resets arduino
+int WDT_DELAY = 8000;// * ARDUINO_DEFAULT_PWM_DIVISOR / (float) (PWM_DIVISOR); // how long before watchdog resets arduino
 
 
 void fail(String msg="<unknown error>") {
@@ -35,19 +31,15 @@ void setup() {
 
   pinMode(X_STEP_PIN, OUTPUT);
   pinMode(X_DIR_PIN, OUTPUT);
-
-  // Make the timer run faster
-  custpwm.setPwmFrequency(X_STEP_PIN, PWM_DIVISOR);
 }
 
 
 void loop() {
   wdt_reset (); // reset watchdog counter
 
-  int step_pins[] = {400, 400};
-  Serial.println("stepping...");
+  int step_pins[] = {400, 500};
   step(step_pins, 500);
-  custpwm.wait(500);
+  delay(500);
 }
 
 
@@ -62,7 +54,7 @@ void step(int steps_per_pin[], int millisecs) {
   */
   int total_num_steps = lcm(steps_per_pin, NUM_PINS);
 
-  float delay_between_steps = (float)millisecs / (float)total_num_steps;
+  float delay_between_steps = (float)millisecs * 1000.0 / (float)total_num_steps;
   if (delay_between_steps > WDT_DELAY) {
     fail("step(): Too much delay between motor pulses. Try increasing the"
          " steps_per_pin values or reducing the total travel time");
@@ -75,28 +67,20 @@ void step(int steps_per_pin[], int millisecs) {
     counter_max[i] = total_num_steps / steps_per_pin[i];
     counters[i] = 0; // hack: can't figur eout how to initialize properly
   }
-  Serial.println(counter_max[0]);
-  Serial.println(counters[0]);
-  Serial.println(total_num_steps);
-
   for (int step=0; step<=total_num_steps; step++) {
 
     // pulse the pins on each step
-    for (int j=0; j<= NUM_PINS ; j++) {
+    for (int j=0; j < NUM_PINS ; j++) {
       if (++counters[j] >= counter_max[j]) {
-        counters[j] = 0;
-        //Serial.println(PIN_MAP[j]);
         digitalWrite(PIN_MAP[j], HIGH);
+      }
+      delayMicroseconds(1);
+      if (counters[j] >= counter_max[j]) {
+        counters[j] = 0;
         digitalWrite(PIN_MAP[j], LOW);
       }
-      // hack: might need this to ensure it actually registers as a pulse
-      //custpwm.wait(0); // hack: I think this actually does wait a little
-      //if (counters[j] >= counter_max[j]) {
-        //counters[j] = 0;
-        //digitalWrite(PIN_MAP[j], LOW);
-      //}
     }
-    custpwm.wait(delay_between_steps);
+    delayMicroseconds(delay_between_steps-1);
     wdt_reset(); // reset watchdog counter
   }
 }
