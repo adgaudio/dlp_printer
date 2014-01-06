@@ -12,7 +12,7 @@ int PIN_MAP[] = {_X_STEP_PIN, _Y_STEP_PIN}; // list the pwm pins for each steppe
 int PIN_DIR_MAP[] = {_X_DIR_PIN, _Y_DIR_PIN}; // list the dir pins for each stepper motor
 
 // reset arduino after 8 seconds.
-const int WDT_DELAY = 8000000;  // consider this non-configurable
+const double WDT_DELAY = 8000000;  // consider this non-configurable
 
 
 void fail(String msg="<unknown error>") {
@@ -43,13 +43,13 @@ void setup() {
 void loop() {
   wdt_reset (); // reset watchdog counter
 
-  unsigned int step_pins[] = {800, 400};
-  step(step_pins, 500000);
+  double step_pins[] = {800, 400};
+  step(step_pins, 1000000);
   delay(500);
 }
 
 
-void step(unsigned int steps_per_pin[], unsigned int microsecs) {
+void step(double steps_per_pin[], double microsecs) {
   /*
   Given a number of steps per pin,
   For each pin,
@@ -58,7 +58,7 @@ void step(unsigned int steps_per_pin[], unsigned int microsecs) {
   Pulses happen as close to concurrently as possible, and pins are identified
   by index in the array
   */
-  unsigned int total_num_steps = lcm(steps_per_pin, NUM_PINS);
+  double total_num_steps = lcm(steps_per_pin, NUM_PINS);
 
   unsigned int delay_between_steps = microsecs / total_num_steps - 1;
   if (delay_between_steps > WDT_DELAY) {
@@ -68,6 +68,7 @@ void step(unsigned int steps_per_pin[], unsigned int microsecs) {
     fail("step(): Not enough delay between motor pulses.  Try decreasing the"
          " steps_per_pin values or increasing the total travel time");
   }
+
 
   // for each pin, a pulse comes every cnt steps
   unsigned int counter_max[NUM_PINS];
@@ -94,9 +95,9 @@ void step(unsigned int steps_per_pin[], unsigned int microsecs) {
 }
 
 
-int gcd(int a, int b) {
+unsigned int gcd(unsigned int a, unsigned int b) {
   /* Find the Greatest Common Divisor of two ints */
-  int t;
+  unsigned int t;
   while (b != 0) {
     t = a % b;
     a = b;
@@ -106,14 +107,13 @@ int gcd(int a, int b) {
 }
 
 
-int lcm(unsigned int ints[], int num_ints) {
+double lcm(double ints[], int num_ints) {
   /* Find the Lowest Common Multiple of an array of ints
    *
    * lcm = a*b / gcd(a, b)
    * lcm_of_many_ints = reduce(lcm, ints)
    */
-
-  unsigned int lcm_val = ints[0];
+  double lcm_val = ints[0];
   for (int i=1 ; i < num_ints ; i++) {
     lcm_val = lcm_val * (ints[i] / gcd(lcm_val, ints[i]));
   }
