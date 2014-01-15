@@ -10,6 +10,7 @@ const int X_STEPS_PER_REV = 200 * 32;
 // derived stepper config
 int PIN_MAP[] = {_X_STEP_PIN, _Y_STEP_PIN}; // list the pwm pins for each stepper motor
 int PIN_DIR_MAP[] = {_X_DIR_PIN, _Y_DIR_PIN}; // list the dir pins for each stepper motor
+int MICROSTEP_PIN_MAP = {11, 12, 13};
 
 // reset arduino after 8 seconds.
 const double WDT_DELAY = 8000000;  // consider this non-configurable
@@ -31,23 +32,64 @@ void setup() {
   //while (!Serial) {
   //  ; // wait for serial port to connect. Needed for Leonardo only
   //}
-  Serial.println("Hello World");
+  Serial.println("Hello!");
 
   for (int i=0 ; i<NUM_PINS; i++) {
     pinMode(PIN_MAP[i], OUTPUT);
     pinMode(PIN_DIR_MAP[i], OUTPUT);
   }
+  set_num_steps_per_turn()
 }
 
+void set_num_steps_per_turn() {
+  Serial.println("Please pass the number of microsteps per turn: 0, 4, 8, 16, 32");
+  byte1 = Serial.read();
+  switch (byte1) {
+    case 0:
+      // Full Step (no microstepping)
+      pinMode(MICROSTEP_PIN_MAP[0], LOW);
+      pinMode(MICROSTEP_PIN_MAP[1], LOW);
+      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+    case 2:
+      // 1/2 Step Microstepping
+      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[1], LOW);
+      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+    case 4:
+      // 1/4 Step Microstepping
+      pinMode(MICROSTEP_PIN_MAP[0], LOW);
+      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+    case 8:
+      // 1/8 Step Microstepping
+      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+    case 16:
+      // 1/16 Step Microstepping
+      pinMode(MICROSTEP_PIN_MAP[0], LOW);
+      pinMode(MICROSTEP_PIN_MAP[1], LOW);
+      pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+    case 32:
+      // 1/32 Step Microstepping
+      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
+      pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+    default:
+      fail("You passed an invalid byte.  You must supply a valid number of stepper motor microsteps: 0, 2, 4, 8, 16 or 32");
+  }
+}
 
 void loop() {
   wdt_reset (); // reset watchdog counter
-
-  double step_pins[] = {800, 400};
-  step(step_pins, 1000000);
-  delay(500);
+  // TODO: get step from Serial
+  // TODO: test moving motor up and down
+  // TODO: make a function that moves the vat and then raises the platform
+  // TODO: try another function that constantly raises the platform
+  double step_pins[] = {6400, 10};
+  step(step_pins, 7000000);
+  delay(100);
 }
-
 
 void step(double steps_per_pin[], double microsecs) {
   /*
@@ -68,8 +110,6 @@ void step(double steps_per_pin[], double microsecs) {
     fail("step(): Not enough delay between motor pulses.  Try decreasing the"
          " steps_per_pin values or increasing the total travel time");
   }
-
-
   // for each pin, a pulse comes every cnt steps
   unsigned int counter_max[NUM_PINS];
   unsigned int counters[NUM_PINS];
