@@ -10,10 +10,10 @@ const int X_STEPS_PER_REV = 200 * 32;
 // derived stepper config
 int PIN_MAP[] = {_X_STEP_PIN, _Y_STEP_PIN}; // list the pwm pins for each stepper motor
 int PIN_DIR_MAP[] = {_X_DIR_PIN, _Y_DIR_PIN}; // list the dir pins for each stepper motor
-int MICROSTEP_PIN_MAP = {11, 12, 13};
+int MICROSTEP_PIN_MAP[3] = {11, 12, 13};
 
 // reset arduino after 8 seconds.
-const double WDT_DELAY = 8000000;  // consider this non-configurable
+const long WDT_DELAY = 8000000;  // consider this non-configurable
 
 
 void fail(String msg="<unknown error>") {
@@ -29,69 +29,86 @@ void setup() {
 
   // serial stuff
   Serial.begin(9600); 
-  //while (!Serial) {
-  //  ; // wait for serial port to connect. Needed for Leonardo only
-  //}
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
   Serial.println("Hello!");
 
   for (int i=0 ; i<NUM_PINS; i++) {
     pinMode(PIN_MAP[i], OUTPUT);
     pinMode(PIN_DIR_MAP[i], OUTPUT);
   }
-  set_num_steps_per_turn()
+  set_num_steps_per_turn();
+  Serial.println(String ("You now control ") + NUM_PINS + " stepper motors.");
 }
 
 void set_num_steps_per_turn() {
   Serial.println("Please pass the number of microsteps per turn: 0, 4, 8, 16, 32");
-  byte1 = Serial.read();
+  while (!Serial.available()) {}
+  int byte1 = Serial.read();
   switch (byte1) {
     case 0:
-      // Full Step (no microstepping)
+      Serial.println("Full Step (no microstepping)");
       pinMode(MICROSTEP_PIN_MAP[0], LOW);
       pinMode(MICROSTEP_PIN_MAP[1], LOW);
       pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      break;
     case 2:
-      // 1/2 Step Microstepping
+      Serial.println("1/2 Step Microstepping");
       pinMode(MICROSTEP_PIN_MAP[0], HIGH);
       pinMode(MICROSTEP_PIN_MAP[1], LOW);
       pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      break;
     case 4:
-      // 1/4 Step Microstepping
+      Serial.println("1/4 Step Microstepping");
       pinMode(MICROSTEP_PIN_MAP[0], LOW);
       pinMode(MICROSTEP_PIN_MAP[1], HIGH);
       pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      break;
     case 8:
-      // 1/8 Step Microstepping
+      Serial.println("1/8 Step Microstepping");
       pinMode(MICROSTEP_PIN_MAP[0], HIGH);
       pinMode(MICROSTEP_PIN_MAP[1], HIGH);
       pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      break;
     case 16:
-      // 1/16 Step Microstepping
+      Serial.println("1/16 Step Microstepping");
       pinMode(MICROSTEP_PIN_MAP[0], LOW);
       pinMode(MICROSTEP_PIN_MAP[1], LOW);
       pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+      break;
     case 32:
-      // 1/32 Step Microstepping
+      Serial.println("1/32 Step Microstepping");
       pinMode(MICROSTEP_PIN_MAP[0], HIGH);
       pinMode(MICROSTEP_PIN_MAP[1], HIGH);
       pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+      break;
     default:
-      fail("You passed an invalid byte.  You must supply a valid number of stepper motor microsteps: 0, 2, 4, 8, 16 or 32");
+      fail(String ("You passed an invalid byte: ") + (int) byte1 +
+           ". You must supply a valid number of stepper motor microsteps: " +
+           " 0, 2, 4, 8, 16 or 32");
+      break;
   }
+}
+
+long serial_read_long() {
+  return ((Serial.read() << 24) | (Serial.read() << 16)
+          | (Serial.read() << 8) | (Serial.read()));
 }
 
 void loop() {
   wdt_reset (); // reset watchdog counter
-  // TODO: get step from Serial
-  // TODO: test moving motor up and down
-  // TODO: make a function that moves the vat and then raises the platform
-  // TODO: try another function that constantly raises the platform
-  double step_pins[] = {6400, 10};
-  step(step_pins, 7000000);
-  delay(100);
+  if (Serial.available()) {
+    long step_pins[NUM_PINS];
+    for (int i=0; i<NUM_PINS; i++) {
+      step_pins[i] = serial_read_long();
+    }
+    long microsecs = serial_read_long();
+    step(step_pins, microsecs);
+  }
 }
 
-void step(double steps_per_pin[], double microsecs) {
+void step(long steps_per_pin[], long microsecs) {
   /*
   Given a number of steps per pin,
   For each pin,
@@ -100,7 +117,7 @@ void step(double steps_per_pin[], double microsecs) {
   Pulses happen as close to concurrently as possible, and pins are identified
   by index in the array
   */
-  double total_num_steps = lcm(steps_per_pin, NUM_PINS);
+  long total_num_steps = lcm(steps_per_pin, NUM_PINS);
 
   unsigned int delay_between_steps = microsecs / total_num_steps - 1;
   if (delay_between_steps > WDT_DELAY) {
@@ -147,13 +164,13 @@ unsigned int gcd(unsigned int a, unsigned int b) {
 }
 
 
-double lcm(double ints[], int num_ints) {
+long lcm(long ints[], int num_ints) {
   /* Find the Lowest Common Multiple of an array of ints
    *
    * lcm = a*b / gcd(a, b)
    * lcm_of_many_ints = reduce(lcm, ints)
    */
-  double lcm_val = ints[0];
+  long lcm_val = ints[0];
   for (int i=1 ; i < num_ints ; i++) {
     lcm_val = lcm_val * (ints[i] / gcd(lcm_val, ints[i]));
   }
