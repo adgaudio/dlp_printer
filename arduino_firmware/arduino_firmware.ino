@@ -86,13 +86,13 @@ void setup() {
     pinMode(PIN_DIR_MAP[i], OUTPUT);
   }
   set_num_steps_per_turn();
-  Serial.println(String ("You now control ") + NUM_MOTORS + " stepper motors."
-                 " Please pass " + (NUM_MOTORS * 4 + 4 + 1) +
-                 " bytes at a time in Big Endian order.");
+  Serial.println(String ("\nYou now control ") + NUM_MOTORS + " stepper"
+                 " motors.  Please pass " + (NUM_MOTORS * 4 + 4 + 1) +
+                 " bytes at a time in Big Endian order.\n\n");
   Serial.println((String ("Each message must contain:")) +
                  "\n- per motor, a 4 byte int defining num steps to move" +
                  "\n- a 4 byte int defining microseconds to block for" +
-                 "\n- 1 byte encoding the direction of each motor");
+                 "\n- 1 byte encoding the direction of each motor\n\n");
 }
 
 
@@ -109,7 +109,7 @@ void loop() {
     byte directions = serial_read_byte();
 
     // do stuff with gathered data
-    Serial.println(((String) "stepping for ") + microsecs + "microsecs...");
+    Serial.println(((String) "stepping for ") + microsecs + " microsecs...");
     set_direction(directions);
     step(step_pins, microsecs);
   }
@@ -126,10 +126,9 @@ unsigned long serial_read_long() {
   unsigned long a = 0;
   unsigned long b;
   for (int i=3 ; i>=0 ; i--) {
-    b = (long) serial_read_byte();
+    b = serial_read_byte();
     a |= (b << (i*8));
   }
-  Serial.println(a);
   return a;
 }
 
@@ -140,7 +139,7 @@ void set_direction(byte directions) {
   `directions` is a 1-byte bitmap for recognized motors.
   */
   for (int jth_bit=0; jth_bit<8; jth_bit++) {
-    if (directions & (1<<jth_bit)) {
+    if (directions & (1<<(7-jth_bit))) {
       digitalWrite(PIN_DIR_MAP[jth_bit], HIGH);
     } else {
       digitalWrite(PIN_DIR_MAP[jth_bit], LOW);

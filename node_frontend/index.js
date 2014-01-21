@@ -65,14 +65,19 @@ var send_serial = function(sp) {
   msg.writeInt32BE(a, 0, false); // num steps on motor 1
   msg.writeInt32BE(b, 4, false); // num steps on motor 2
   msg.writeInt32BE(c, 8, false); // num microsecs to move for
-  msg.writeUInt8(d, 9, false); // bitmap of motor directions
+  msg.writeUInt8(d, 12, false); // bitmap of motor directions
   sp.write(msg, function() {
     sp.drain(function() {
       log('sent bytes');
     });
   })
   }
-  s(200*32, 6400, 1000000, 1<<7|1<<6);
+  
+  // TODO: make this queue up on nodejs's end to ensure these all go through!
+  ex = function() {
+  s(200*16, 6400, 1000000, 1<<7);
+  s(200*16, 6400, 1000000, 1<<6);
+  }
   repl.start("..");
 }
 
