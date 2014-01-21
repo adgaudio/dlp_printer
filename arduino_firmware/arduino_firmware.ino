@@ -4,7 +4,7 @@
 // FYI: you can't set more than 8 motors without changing the directions stuff
 int PIN_MAP[] = {5, 7}; // pwm pins that move each stepper motor (driver)
 int PIN_DIR_MAP[] = {4, 6}; // pins that set direction for each stepper motor driver
-int MICROSTEP_PIN_MAP[3] = {11, 12, 13}; // pins that set same microstepping across all stepper drivers
+int MICROSTEP_PIN_MAP[] = {11, 12, 13}; // pins that set same microstepping across all stepper drivers
 
 // derived stepper config
 const int NUM_MOTORS = 2;//sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
@@ -27,39 +27,39 @@ void set_num_steps_per_turn() {
   switch (byte1) {
     case 0:
       Serial.println("Full Step (no microstepping)");
-      pinMode(MICROSTEP_PIN_MAP[0], LOW);
-      pinMode(MICROSTEP_PIN_MAP[1], LOW);
-      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
       break;
     case 2:
       Serial.println("1/2 Step Microstepping");
-      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[1], LOW);
-      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
       break;
     case 4:
       Serial.println("1/4 Step Microstepping");
-      pinMode(MICROSTEP_PIN_MAP[0], LOW);
-      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
       break;
     case 8:
       Serial.println("1/8 Step Microstepping");
-      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
       break;
     case 16:
       Serial.println("1/16 Step Microstepping");
-      pinMode(MICROSTEP_PIN_MAP[0], LOW);
-      pinMode(MICROSTEP_PIN_MAP[1], LOW);
-      pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
+      digitalWrite(MICROSTEP_PIN_MAP[2], HIGH);
       break;
     case 32:
       Serial.println("1/32 Step Microstepping");
-      pinMode(MICROSTEP_PIN_MAP[0], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[1], HIGH);
-      pinMode(MICROSTEP_PIN_MAP[2], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
+      digitalWrite(MICROSTEP_PIN_MAP[2], HIGH);
       break;
     default:
       fail(String ("You passed an invalid byte: ") + (int) byte1 +
@@ -85,6 +85,10 @@ void setup() {
     pinMode(PIN_MAP[i], OUTPUT);
     pinMode(PIN_DIR_MAP[i], OUTPUT);
   }
+  for (int i=0; i<3; i++) {
+    pinMode(MICROSTEP_PIN_MAP[i], OUTPUT);
+  }
+
   set_num_steps_per_turn();
   Serial.println(String ("\nYou now control ") + NUM_MOTORS + " stepper"
                  " motors.  Please pass " + (NUM_MOTORS * 4 + 4 + 1) +

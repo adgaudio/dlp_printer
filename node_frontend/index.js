@@ -1,6 +1,6 @@
 var port_fp = process.argv[2];
-var baudrate = process.argv[3] || 9600;
-var microstepping = process.argv[4] || 32;
+var microstepping = process.argv[3] || 16;
+var baudrate = process.argv[4] || 9600;
 
 var com = require("serialport");
 require("colors");
@@ -75,10 +75,10 @@ var send_serial = function(sp) {
   
   // TODO: make this queue up on nodejs's end to ensure these all go through!
   ex = function() {
-  s(200*16, 6400, 1000000, 1<<7);
-  s(200*16, 6400, 1000000, 1<<6);
+  s(200*microstepping*2, 6400, 1000000, 0<<7);
+  s(200*microstepping*2, 6400, 1000000, 1<<7);
   }
-  repl.start("..");
+  repl.start("repl> ");
 }
 
 var main = function() {
