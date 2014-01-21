@@ -1,50 +1,95 @@
 var port_fp = process.argv[2];
 var baudrate = process.argv[3] || 9600;
-var microstepping = 16;
+var microstepping = process.argv[4] || 32;
 
-var com = require("serialport")
-//var repl = require("repl");
+var com = require("serialport");
+require("colors");
+var repl = require("repl");
 //repl.start(">>");
 
 // show available ports
-com.list(function (err, ports) {
-  console.log("--------");
-  ports.forEach(function(port) {
-    console.log(port.comName);
-    console.log(port.pnpId);
-    port.manufacturer && console.log(port.manufacturer);
-    console.log("");
+var list_ports_and_exit = function() {
+  com.list(function (err, ports) {
+    console.log("--------");
+    ports.forEach(function(port) {
+      console.log(port.comName);
+      console.log(port.pnpId);
+      port.manufacturer && console.log(port.manufacturer);
+      console.log("");
+    });
+    console.log("========");
+    process.exit();
   });
-  console.log("========");
-});
+  console.log('Please specify one of these available device ports...');
+}
 
-// Connect to Arduino
-var sp = new com.SerialPort(port_fp, {
-  baudRate: baudrate,
-  parser: com.parsers.readline("\n")
-});
+var log = function(msg) {
+  console.log(">>> ".green + msg);
+}
+var log_serial = function(msg) {
+  console.log("<<< ".blue + msg);
+}
 
-sp.on('open',function() {
-  // read data at regular intervals
-  console.log('opened Serial port');
-
-  sp.on('data', function(data) {
-    var data2 = data.toString('utf-8')
-    if (data2) {
-    console.log("<<< " + data2);
-    }
-  });
-
-  // set microstepping
-  setTimeout(function() {
-  console.log("writing data!");
-  var message = new Buffer(1);
-  message[0] = microstepping;
-  sp.write(message, function() {
-    sp.drain(function() {
-      console.log('finished writing');
+var _init_serial_called_next = false;
+var init_serial = function(sp, next) {
+  sp.on('open', function() {
+    log('opened Serial port');
+    // read data as it arrives
+    sp.on('data', function(data) {
+      var data2 = data.toString('utf-8')
+      if (data2) {
+      log_serial(data2);
+      }
+      //set microstepping
+      if (data2.trim().match("Please pass the number of microsteps per turn:"))
+      {
+        var message = new Buffer(1);
+        message[0] = microstepping;
+        sp.write(message, function() {
+          sp.drain(function() {
+            if (!_init_serial_called_next) {
+              _init_serial_called_next = true;
+              next(sp);
+            }
+          });
+        });
+      }
     });
   });
-  }, 2000);
+}
 
-});
+var send_serial = function(sp) {
+  s = function(a, b, c, d) {
+  log('sending data to Serial');
+  msg = new Buffer(13);
+  msg.writeInt32BE(a, 0, false); // num steps on motor 1
+  msg.writeInt32BE(b, 4, false); // num steps on motor 2
+  msg.writeInt32BE(c, 8, false); // num microsecs to move for
+  msg.writeUInt8(d, 9, false); // bitmap of motor directions
+  sp.write(msg, function() {
+    sp.drain(function() {
+      log('sent bytes');
+    });
+  })
+  }
+  s(200*32, 6400, 1000000, 1<<7|1<<6);
+  repl.start("..");
+}
+
+var main = function() {
+  if (!port_fp) {
+    list_ports_and_exit();
+  } else {
+    // Connect to Arduino
+    var sp = new com.SerialPort(port_fp, {
+      baudRate: baudrate,
+      parser: com.parsers.readline("\n")
+    });
+
+    // init serial and then starts reading/writing data
+    init_serial(sp, send_serial);
+  }
+}
+
+// execute main function
+main();
