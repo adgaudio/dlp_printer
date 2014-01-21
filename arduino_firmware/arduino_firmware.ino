@@ -1,46 +1,24 @@
 #include "avr/wdt.h"  // watchdog resets avr chip if it hangs
 
-// stepper motor config
-const int _X_DIR_PIN = 4;
-const int _X_STEP_PIN = 5;
-const int _Y_DIR_PIN = 6;
-const int _Y_STEP_PIN = 7;
-const int NUM_PINS = 2; //sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
-const int X_STEPS_PER_REV = 200 * 32;
-// derived stepper config
-int PIN_MAP[] = {_X_STEP_PIN, _Y_STEP_PIN}; // list the pwm pins for each stepper motor
-int PIN_DIR_MAP[] = {_X_DIR_PIN, _Y_DIR_PIN}; // list the dir pins for each stepper motor
-int MICROSTEP_PIN_MAP[3] = {11, 12, 13};
+// USER CONFIG: stepper motor config
+// FYI: you can't set more than 8 motors without changing the directions stuff
+int PIN_MAP[] = {5, 7}; // pwm pins that move each stepper motor (driver)
+int PIN_DIR_MAP[] = {4, 6}; // pins that set direction for each stepper motor driver
+int MICROSTEP_PIN_MAP[3] = {11, 12, 13}; // pins that set same microstepping across all stepper drivers
 
+// derived stepper config
+const int NUM_MOTORS = 2;//sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
 // reset arduino after 8 seconds.
-const long WDT_DELAY = 8000000;  // consider this non-configurable
+const unsigned long WDT_DELAY = 8000000;  // consider this non-configurable
 
 
 void fail(String msg="<unknown error>") {
   Serial.println("Fail: " + msg);
-  // force hang
+  // force hang & reset
+  wdt_enable(WDTO_15MS);
   while (1) { }
 }
 
-
-void setup() {
-  // watchdog: reset after X seconds if counter not reset
-  wdt_enable(WDTO_8S);
-
-  // serial stuff
-  Serial.begin(9600); 
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for Leonardo only
-  }
-  Serial.println("Hello!");
-
-  for (int i=0 ; i<NUM_PINS; i++) {
-    pinMode(PIN_MAP[i], OUTPUT);
-    pinMode(PIN_DIR_MAP[i], OUTPUT);
-  }
-  set_num_steps_per_turn();
-  Serial.println(String ("You now control ") + NUM_PINS + " stepper motors.");
-}
 
 void set_num_steps_per_turn() {
   Serial.println("Please pass the number of microsteps per turn: 0, 4, 8, 16, 32");
@@ -91,35 +69,100 @@ void set_num_steps_per_turn() {
   }
 }
 
-long serial_read_long() {
-  return ((Serial.read() << 24) | (Serial.read() << 16)
-          | (Serial.read() << 8) | (Serial.read()));
+
+void setup() {
+  // watchdog: reset after X seconds if counter not reset
+  wdt_enable(WDTO_8S);
+
+  // serial stuff
+  Serial.begin(9600); 
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for Leonardo only
+  }
+  Serial.println("Hello!");
+
+  for (int i=0 ; i<NUM_MOTORS; i++) {
+    pinMode(PIN_MAP[i], OUTPUT);
+    pinMode(PIN_DIR_MAP[i], OUTPUT);
+  }
+  set_num_steps_per_turn();
+  Serial.println(String ("You now control ") + NUM_MOTORS + " stepper motors."
+                 " Please pass " + (NUM_MOTORS * 4 + 4 + 1) +
+                 " bytes at a time in Big Endian order.");
+  Serial.println((String ("Each message must contain:")) +
+                 "\n- per motor, a 4 byte int defining num steps to move" +
+                 "\n- a 4 byte int defining microseconds to block for" +
+                 "\n- 1 byte encoding the direction of each motor");
 }
+
 
 void loop() {
   wdt_reset (); // reset watchdog counter
+
   if (Serial.available()) {
-    long step_pins[NUM_PINS];
-    for (int i=0; i<NUM_PINS; i++) {
+    // read data from serial
+    unsigned long step_pins[NUM_MOTORS];
+    for (int i=0; i<NUM_MOTORS; i++) {
       step_pins[i] = serial_read_long();
     }
-    long microsecs = serial_read_long();
+    unsigned long microsecs = serial_read_long();
+    byte directions = serial_read_byte();
+
+    // do stuff with gathered data
+    Serial.println(((String) "stepping for ") + microsecs + "microsecs...");
+    set_direction(directions);
     step(step_pins, microsecs);
   }
 }
 
-void step(long steps_per_pin[], long microsecs) {
-  /*
-  Given a number of steps per pin,
-  For each pin,
-  pulse a high-low sequence once per step over the course of X `microsecs`
+byte serial_read_byte() {
+  /* read a byte from Serial */
+  while (!Serial.available()) {}
+  return Serial.read();
+}
 
-  Pulses happen as close to concurrently as possible, and pins are identified
-  by index in the array
+unsigned long serial_read_long() {
+  /* read a 4 byte unsigned int (ie an unsigned long) from Serial */
+  unsigned long a = 0;
+  unsigned long b;
+  for (int i=3 ; i>=0 ; i--) {
+    b = (long) serial_read_byte();
+    a |= (b << (i*8));
+  }
+  Serial.println(a);
+  return a;
+}
+
+void set_direction(byte directions) {
+  /* Set the direction pin for each motor according to a bit sequence
+  Big Endian Order: the first bit corresponds to the first motor
+
+  `directions` is a 1-byte bitmap for recognized motors.
   */
-  long total_num_steps = lcm(steps_per_pin, NUM_PINS);
+  for (int jth_bit=0; jth_bit<8; jth_bit++) {
+    if (directions & (1<<jth_bit)) {
+      digitalWrite(PIN_DIR_MAP[jth_bit], HIGH);
+    } else {
+      digitalWrite(PIN_DIR_MAP[jth_bit], LOW);
+    }
+  }
+}
 
+void step(unsigned long steps_per_pin[], unsigned long microsecs) {
+  /*
+  Move motors simultaneously...
+
+  For each pin, pulse a high-low sequence once per step over the course of X
+  `microsecs`. Pulses happen as close to concurrently as possible.
+  Accurate timing is not guaranteed.
+
+  `steps_per_pin` is an array of longs (aka 4-byte ints) that determine how
+      many steps each motor should move
+  `microsecs` is a long (4 byte int) specifying how much time to move motors
+  */
+  unsigned long total_num_steps = lcm(steps_per_pin, NUM_MOTORS);
   unsigned int delay_between_steps = microsecs / total_num_steps - 1;
+
   if (delay_between_steps > WDT_DELAY) {
     fail("step(): Too much delay between motor pulses. Try increasing the"
          " steps_per_pin values or reducing the total travel time");
@@ -128,15 +171,15 @@ void step(long steps_per_pin[], long microsecs) {
          " steps_per_pin values or increasing the total travel time");
   }
   // for each pin, a pulse comes every cnt steps
-  unsigned int counter_max[NUM_PINS];
-  unsigned int counters[NUM_PINS];
-  for (int i=0; i<NUM_PINS ; i++) {
+  unsigned int counter_max[NUM_MOTORS];
+  unsigned int counters[NUM_MOTORS];
+  for (int i=0; i<NUM_MOTORS ; i++) {
     counter_max[i] = total_num_steps / steps_per_pin[i];
     counters[i] = 0; // hack: can't figur eout how to initialize properly
   }
   for (int step=0; step<=total_num_steps; step++) {
     // pulse the pins on each step
-    for (int j=0; j < NUM_PINS ; j++) {
+    for (int j=0; j < NUM_MOTORS ; j++) {
       if (++counters[j] >= counter_max[j]) {
         digitalWrite(PIN_MAP[j], HIGH);
       }
@@ -164,13 +207,13 @@ unsigned int gcd(unsigned int a, unsigned int b) {
 }
 
 
-long lcm(long ints[], int num_ints) {
+unsigned long lcm(unsigned long ints[], int num_ints) {
   /* Find the Lowest Common Multiple of an array of ints
    *
    * lcm = a*b / gcd(a, b)
    * lcm_of_many_ints = reduce(lcm, ints)
    */
-  long lcm_val = ints[0];
+  unsigned long lcm_val = ints[0];
   for (int i=1 ; i < num_ints ; i++) {
     lcm_val = lcm_val * (ints[i] / gcd(lcm_val, ints[i]));
   }
