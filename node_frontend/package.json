@@ -5,6 +5,7 @@
     "description": "Software for integrating with a DLP Printer",
     "author": "Alex Gaudio",
     "dependencies": {
-        "serialport": "latest"
+        "serialport": "latest",
+        "colors": "latest"
     }
 }
