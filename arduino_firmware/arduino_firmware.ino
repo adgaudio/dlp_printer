@@ -1,27 +1,26 @@
 #include "avr/wdt.h"  // watchdog resets avr chip if it hangs
+#include "configuration.h"
 
-// USER CONFIG: stepper motor config
-// FYI: you can't set more than 8 motors without changing the directions stuff
-int PIN_MAP[] = {5, 7}; // pwm pins that move each stepper motor (driver)
-int PIN_DIR_MAP[] = {4, 6}; // pins that set direction for each stepper motor driver
-int MICROSTEP_PIN_MAP[] = {11, 12, 13}; // pins that set same microstepping across all stepper drivers
+// This firmware runs on an arduino and facilitates communication between a
+// computer and a dlp printer(containing stepper motors and a laser scanning
+// galvanometer).
 
-// derived stepper config
-const int NUM_MOTORS = 2;//sizeof(PIN_MAP) / sizeof(PIN_MAP[0]);
+
 // reset arduino after 8 seconds.
 const unsigned long WDT_DELAY = 8000000;  // consider this non-configurable
 
 
+// force hang & reset
 void fail(String msg="<unknown error>") {
   Serial.println("Fail: " + msg);
-  // force hang & reset
   wdt_enable(WDTO_15MS);
   while (1) { }
 }
 
 
+// Configure stepper motor microstepping
 void set_num_steps_per_turn() {
-  Serial.println("Please pass the number of microsteps per turn: 0, 4, 8, 16, 32");
+  Serial.println("Please pass exactly 1 byte specifying the number of microsteps per turn: 0, 4, 8, 16, 32");
   while (!Serial.available()) {}
   int byte1 = Serial.read();
   switch (byte1) {
@@ -72,7 +71,7 @@ void set_num_steps_per_turn() {
 
 void setup() {
   // watchdog: reset after X seconds if counter not reset
-  wdt_enable(WDTO_8S);
+  wdt_enable(WDTO_8S);  // TODO: is WDTO_8S the same as WDT_DELAY?
 
   // serial stuff
   Serial.begin(9600); 
@@ -94,9 +93,9 @@ void setup() {
                  " motors.  Please pass " + (NUM_MOTORS * 4 + 4 + 1) +
                  " bytes at a time in Big Endian order.\n\n");
   Serial.println((String ("Each message must contain:")) +
-                 "\n- per motor, a 4 byte int defining num steps to move" +
-                 "\n- a 4 byte int defining microseconds to block for" +
-                 "\n- 1 byte encoding the direction of each motor\n\n");
+      "\n- per motor, a (4 byte) long defining num steps to move" +
+      "\n- a (4 byte) long defining microseconds to block for" +
+      "\n- 1 byte bitmap encoding the respective direction of each motor\n\n");
 }
 
 
@@ -178,7 +177,7 @@ void step(unsigned long steps_per_pin[], unsigned long microsecs) {
   unsigned int counters[NUM_MOTORS];
   for (int i=0; i<NUM_MOTORS ; i++) {
     counter_max[i] = total_num_steps / steps_per_pin[i];
-    counters[i] = 0; // hack: can't figur eout how to initialize properly
+    counters[i] = 0;
   }
   for (int step=0; step<=total_num_steps; step++) {
     // pulse the pins on each step
@@ -186,7 +185,9 @@ void step(unsigned long steps_per_pin[], unsigned long microsecs) {
       if (++counters[j] >= counter_max[j]) {
         digitalWrite(PIN_MAP[j], HIGH);
       }
-      delayMicroseconds(1);
+    }
+    delayMicroseconds(1);
+    for (int j=0; j < NUM_MOTORS ; j++) {
       if (counters[j] >= counter_max[j]) {
         counters[j] = 0;
         digitalWrite(PIN_MAP[j], LOW);
