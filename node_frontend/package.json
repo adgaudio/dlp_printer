@@ -1,11 +1,11 @@
-
 {
-    "name": "Unnamed",
-    "version": "0.0.1",
-    "description": "Software for integrating with a DLP Printer",
-    "author": "Alex Gaudio",
-    "dependencies": {
-        "serialport": "latest",
-        "colors": "latest"
-    }
+  "name": "Unnamed",
+  "version": "0.0.1",
+  "description": "Software for integrating with a DLP Printer",
+  "author": "Alex Gaudio",
+  "dependencies": {
+    "serialport": "latest",
+    "colors": "latest",
+    "yargs": "~1.3.3"
+  }
 }
