@@ -8,32 +8,36 @@ var yargs = require("yargs")
 
 // global singleton func that sets and determines the current state of the
 // arduino board
-var state = new function() {
+function State() {
   events.EventEmitter.call(this);
   this.things = ["all", "motors", "lasers"];
   this.states = ["on", "off"];
-  this.set = function(event) {
-    var thing = event.split("_")[0];
-    var state = event.split("_")[1];
-    if ((this.things.indexOf(thing) <= -1)
-        && (this.states.indexOf(state) <= -1)) {
-      throw new Error(
-        'unrecognized state event.'
-        + " You should pass a <thing>_<state>, but you passed: "
-        + event);
-    }
-    if (thing === "all") {
-      this.things.slice(1).forEach(function(thing) {
-        // this.emit(thing + "_" + state);
-        // TODO
-        console.log(thing + '_' + state);
-      });
-    }
+}
+
+util.inherits(State, events.EventEmitter);
+
+State.prototype.set = function(event) {
+  var thing = event.split("_")[0];
+  var state = event.split("_")[1];
+  if ((this.things.indexOf(thing) <= -1)
+      && (this.states.indexOf(state) <= -1)) {
+    throw new Error(
+      'unrecognized state event.'
+      + " You should pass a <thing>_<state>, but you passed: "
+      + event);
+  }
+  var _this = this;
+  if (thing === "all") {
+    _this.things.slice(1).forEach(function(thing) {
+      var ev = thing + "_" + state;
+      _this.emit(ev);
+      log("set state: " + ev);
+    });
   }
 }
-util.inherits(state, events.EventEmitter);
 
-state.set("all_on")
+var state = new State();
+
 // show available ports
 var list_ports_and_exit = function() {
   com.list(function (err, ports) {
@@ -96,10 +100,12 @@ var handle_incoming_data = function(rawmsg, sp) {
   {
     state.set("all_off");
     microstep_listener(sp);
-    // TODO: save what's currently in the pipe and then, after microstep
-    // listener, submit it again?
+    // TODO: the arduino might choose to reset itself for whatever reason.  If
+    // it does, I should save what's currently in the pipe and then, after
+    // microstep listener, perhaps submit it again?
   } else if (msg.match("Please pass 13 bytes at a time in Big Endian order")) {
     state.set("motors_on");
+    send_serial(sp);
   }
 
 }
@@ -156,7 +162,7 @@ var main = function() {
     });
 
     // init serial and then starts reading/writing data
-    init_serial(sp, send_serial);
+    init_serial(sp);
   }
 }
 
