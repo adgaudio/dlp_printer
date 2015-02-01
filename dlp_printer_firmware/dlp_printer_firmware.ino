@@ -21,44 +21,43 @@ void fail(String msg="<unknown error>") {
 // Configure stepper motor microstepping
 void set_num_steps_per_turn() {
   Serial.println("Please pass exactly 1 byte specifying the number of microsteps per turn: 0, 4, 8, 16, 32");
-  while (!Serial.available()) {}
-  int byte1 = Serial.read();
+  int byte1 = (int) serial_read_byte();
   switch (byte1) {
     case 0:
       Serial.println("Full Step (no microstepping)");
-      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
       break;
     case 2:
       Serial.println("1/2 Step Microstepping");
-      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
       break;
     case 4:
       Serial.println("1/4 Step Microstepping");
-      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
       break;
     case 8:
       Serial.println("1/8 Step Microstepping");
-      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[2], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
       break;
     case 16:
       Serial.println("1/16 Step Microstepping");
-      digitalWrite(MICROSTEP_PIN_MAP[0], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[1], LOW);
-      digitalWrite(MICROSTEP_PIN_MAP[2], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], HIGH);
       break;
     case 32:
       Serial.println("1/32 Step Microstepping");
-      digitalWrite(MICROSTEP_PIN_MAP[0], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[1], HIGH);
-      digitalWrite(MICROSTEP_PIN_MAP[2], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
+      digitalWrite(MOTOR_MICROSTEP_PINS[2], HIGH);
       break;
     default:
       fail(String ("You passed an invalid byte: ") + (int) byte1 +
@@ -69,33 +68,54 @@ void set_num_steps_per_turn() {
 }
 
 
+void configure_motors() {
+  /* Initial settings for Motor pins */
+  for (int i=0 ; i<NUM_MOTORS; i++) {
+    pinMode(MOTOR_STEP_PINS[i], OUTPUT);
+    pinMode(MOTOR_DIR_PINS[i], OUTPUT);
+  }
+  for (int i=0; i<3; i++) {
+    pinMode(MOTOR_MICROSTEP_PINS[i], OUTPUT);
+  }
+  pinMode(MOTOR_POWER_PIN, OUTPUT);
+  digitalWrite(MOTOR_POWER_PIN, HIGH);  // on by default
+  set_num_steps_per_turn();
+}
+
+
+void configure_lasers() {
+  /* Initial settings for Laser pins */
+  // TODO
+  for (int i=0; i<2; i++) {
+    pinMode(LASER_XY_PINS[i], OUTPUT);
+  }
+  pinMode(LASER_POWER_PIN, OUTPUT);
+  digitalWrite(LASER_POWER_PIN, LOW);  // off by default
+}
+
+
 void setup() {
   // watchdog: reset after X seconds if counter not reset
   wdt_enable(WDTO_8S);  // TODO: is WDTO_8S the same as WDT_DELAY?
 
   // serial stuff
-  Serial.begin(9600); 
+  Serial.begin(BAUDRATE);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
   Serial.println("Hello!");
+  configure_motors();
+  configure_lasers();
 
-  for (int i=0 ; i<NUM_MOTORS; i++) {
-    pinMode(PIN_MAP[i], OUTPUT);
-    pinMode(PIN_DIR_MAP[i], OUTPUT);
-  }
-  for (int i=0; i<3; i++) {
-    pinMode(MICROSTEP_PIN_MAP[i], OUTPUT);
-  }
-
-  set_num_steps_per_turn();
   Serial.println(String ("\nYou now control ") + NUM_MOTORS + " stepper"
-                 " motors.  Please pass " + (NUM_MOTORS * 4 + 4 + 1) +
-                 " bytes at a time in Big Endian order.\n\n");
+                 " motors and " + NUM_LASER_MOTORS + "lasers.  Please pass "
+                 + (NUM_MOTORS * 4 + 4 + 1) +
+                 " bytes at a time in Big Endian order.\n\n");  // TODO: figure out how to drive laser motors and define instructions here
   Serial.println((String ("Each message must contain:")) +
       "\n- per motor, a (4 byte) long defining num steps to move" +
       "\n- a (4 byte) long defining microseconds to block for" +
       "\n- 1 byte bitmap encoding the respective direction of each motor\n\n");
+  Serial.flush();
 }
 
 
@@ -143,9 +163,9 @@ void set_direction(byte directions) {
   */
   for (int jth_bit=0; jth_bit<8; jth_bit++) {
     if (directions & (1<<(7-jth_bit))) {
-      digitalWrite(PIN_DIR_MAP[jth_bit], HIGH);
+      digitalWrite(MOTOR_DIR_PINS[jth_bit], HIGH);
     } else {
-      digitalWrite(PIN_DIR_MAP[jth_bit], LOW);
+      digitalWrite(MOTOR_DIR_PINS[jth_bit], LOW);
     }
   }
 }
@@ -163,12 +183,12 @@ void step(unsigned long steps_per_pin[], unsigned long microsecs) {
   `microsecs` is a long (4 byte int) specifying how much time to move motors
   */
   unsigned long total_num_steps = lcm(steps_per_pin, NUM_MOTORS);
-  unsigned int delay_between_steps = microsecs / total_num_steps - 1;
+  unsigned long delay_between_steps = microsecs / total_num_steps - 2;
 
   if (delay_between_steps > WDT_DELAY) {
     fail("step(): Too much delay between motor pulses. Try increasing the"
          " steps_per_pin values or reducing the total travel time");
-  } else if (delay_between_steps < 1) {
+  } else if (delay_between_steps < 2) {
     fail("step(): Not enough delay between motor pulses.  Try decreasing the"
          " steps_per_pin values or increasing the total travel time");
   }
@@ -179,18 +199,18 @@ void step(unsigned long steps_per_pin[], unsigned long microsecs) {
     counter_max[i] = total_num_steps / steps_per_pin[i];
     counters[i] = 0;
   }
-  for (int step=0; step<=total_num_steps; step++) {
+  for (long step=0; step<=total_num_steps; step++) {
     // pulse the pins on each step
     for (int j=0; j < NUM_MOTORS ; j++) {
       if (++counters[j] >= counter_max[j]) {
-        digitalWrite(PIN_MAP[j], HIGH);
+        digitalWrite(MOTOR_STEP_PINS[j], HIGH);
       }
     }
-    delayMicroseconds(1);
+    delayMicroseconds(2);
     for (int j=0; j < NUM_MOTORS ; j++) {
       if (counters[j] >= counter_max[j]) {
         counters[j] = 0;
-        digitalWrite(PIN_MAP[j], LOW);
+        digitalWrite(MOTOR_STEP_PINS[j], LOW);
       }
     }
     delayMicroseconds(delay_between_steps);
@@ -199,9 +219,9 @@ void step(unsigned long steps_per_pin[], unsigned long microsecs) {
 }
 
 
-unsigned int gcd(unsigned int a, unsigned int b) {
+unsigned int gcd(unsigned long a, unsigned long b) {
   /* Find the Greatest Common Divisor of two ints */
-  unsigned int t;
+  unsigned long t;
   while (b != 0) {
     t = a % b;
     a = b;
