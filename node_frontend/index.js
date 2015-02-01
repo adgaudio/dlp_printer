@@ -1,67 +1,34 @@
 var com = require("serialport");
 require("colors");
 var repl = require("repl");
-var events = require('events');
-var util = require("util");
-var yargs = require("yargs")
+var REPL_STARTED = false;
+var yargs = require("yargs");
 //repl.start(">>");
 
+var log = require("./log.js");
 // global singleton func that sets and determines the current state of the
 // arduino board
-function State() {
-  events.EventEmitter.call(this);
-  this.things = ["all", "motors", "lasers"];
-  this.states = ["on", "off"];
-}
-
-util.inherits(State, events.EventEmitter);
-
-State.prototype.set = function(event) {
-  var thing = event.split("_")[0];
-  var state = event.split("_")[1];
-  if ((this.things.indexOf(thing) <= -1)
-      && (this.states.indexOf(state) <= -1)) {
-    throw new Error(
-      'unrecognized state event.'
-      + " You should pass a <thing>_<state>, but you passed: "
-      + event);
-  }
-  var _this = this;
-  if (thing === "all") {
-    _this.things.slice(1).forEach(function(thing) {
-      var ev = thing + "_" + state;
-      _this.emit(ev);
-      log("set state: " + ev);
-    });
-  }
-}
-
-var state = new State();
+var state = require("./printer_state.js").state;
 
 // show available ports
 var list_ports_and_exit = function() {
   com.list(function (err, ports) {
-    console.log("--------");
+    log("--------");
     ports.forEach(function(port) {
-      console.log(port.comName);
-      console.log("    ---> " + port.pnpId);
-      port.manufacturer && console.log(port.manufacturer);
-      console.log("");
+      log(port.comName);
+      log("    ---> " + port.pnpId);
+      port.manufacturer && log(port.manufacturer);
+      log("");
     });
-    console.log("========");
+    log("========");
     process.exit();
   });
-  console.log('Please specify one of these available device ports...');
-}
-
-var log = function(msg) {
-  console.log(">>> ".green + msg);
-}
-var log_serial = function(msg) {
-  console.log("<<< ".blue + msg);
+  log('Please specify one of these available device ports...');
 }
 
 var init_serial = function(sp) {
+  /* Initialize the arduino.
+  * Define how to handle messages from the serial port */
   sp.on('open', function(err) {
     if (err) {
       state.set("all_off");
@@ -74,13 +41,13 @@ var init_serial = function(sp) {
     sp.on('error', function(err) {
       state.set("all_off");
       if (err) {
-        log_serial('something related to arduino failed!');
+        log.serial('something related to arduino failed!');
         throw err;
       }});
     sp.on('close', function(err) {
       state.set("all_off");
       if (err) {
-        log_serial('arduino connection closed with failure!');
+        log.serial('arduino connection closed with failure!');
         throw err;
       }});
   });
@@ -90,7 +57,7 @@ var init_serial = function(sp) {
 var handle_incoming_data = function(rawmsg, sp) {
   var msg = rawmsg.toString('utf-8').trim()
   if (msg) {
-    log_serial(msg);
+    log.serial(msg);
   }
 
   //respond to various messages from the arduino firmware
@@ -105,9 +72,7 @@ var handle_incoming_data = function(rawmsg, sp) {
     // microstep listener, perhaps submit it again?
   } else if (msg.match("Please pass 13 bytes at a time in Big Endian order")) {
     state.set("motors_on");
-    send_serial(sp);
   }
-
 }
 
 var microstep_listener = function(sp) {
@@ -145,25 +110,36 @@ var send_serial = function(sp) {
 
   // TODO: make this queue up on nodejs's end to ensure these all go through!
   ex = function() {
-  s(200*argv.microstepping*2, 6400, 1000000, 0<<7);
-  s(200*argv.microstepping*2, 6400, 1000000, 1<<7);
+  s(1*argv.microstepping, 1*argv.microstepping, 1000, 0<<7);
+  s(1*argv.microstepping, 1*argv.microstepping, 1000, 1<<7);
   }
-  repl.start("repl> ");
+  if (!REPL_STARTED) {
+    log("Attaching repl for interactive use");
+    var rs = repl.start("repl> ").on('exit', function() {
+      log("EXIT");
+      process.exit();
+    });
+    REPL_STARTED = true;
+  }
 }
 
 var main = function() {
   if (!argv.fp) {
     list_ports_and_exit();
-  } else {
-    // Connect to Arduino
-    var sp = new com.SerialPort(argv.fp, {
-      baudRate: argv.baudrate,
-      parser: com.parsers.readline("\n")
-    });
-
-    // init serial and then starts reading/writing data
-    init_serial(sp);
+    return 1
   }
+  // Connect to Arduino
+  var sp = new com.SerialPort(argv.fp, {
+    baudRate: argv.baudrate,
+    parser: com.parsers.readline("\n")
+  });
+
+  // init serial and then starts reading/writing data
+  init_serial(sp);
+
+  state.on('motors_on', function(stream) {
+    send_serial(sp);
+  });
 }
 
 parse_argv = function() {
@@ -176,7 +152,7 @@ parse_argv = function() {
   })
   .options('m', {
     alias: 'microstepping',
-    default: 16
+    default: 32
   })
   .options('b', {
     alias: 'baudrate',
