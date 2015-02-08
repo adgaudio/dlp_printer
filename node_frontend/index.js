@@ -60,6 +60,7 @@ var handle_incoming_data = function(rawmsg, sp) {
     log.serial(msg);
   }
 
+  // TODO: these matches are out of date
   //respond to various messages from the arduino firmware
   if (msg.match(
     "Please pass exactly 1 byte specifying the number"
@@ -101,6 +102,7 @@ var send_serial = function(sp) {
   msg.writeInt32BE(b, 4, false); // num steps on motor 2
   msg.writeInt32BE(c, 8, false); // num microsecs to move for
   msg.writeUInt8(d, 12, false); // bitmap of motor directions
+  // TODO: new format.  laser stuff
   sp.write(msg, function() {
     sp.drain(function() {
       log('sent bytes');

@@ -107,14 +107,25 @@ void setup() {
   configure_motors();
   configure_lasers();
 
-  Serial.println(String ("\nYou now control ") + NUM_MOTORS + " stepper"
-                 " motors and " + NUM_LASER_MOTORS + "lasers.  Please pass "
-                 + (NUM_MOTORS * 4 + 4 + 1) +
-                 " bytes at a time in Big Endian order.\n\n");  // TODO: figure out how to drive laser motors and define instructions here
-  Serial.println((String ("Each message must contain:")) +
-      "\n- per motor, a (4 byte) long defining num steps to move" +
-      "\n- a (4 byte) long defining microseconds to block for" +
-      "\n- 1 byte bitmap encoding the respective direction of each motor\n\n");
+  Serial.println(
+      String ("\nYou now control ") + NUM_MOTORS + " stepper"
+      " motors and " + NUM_LASER_MOTORS + "lasers.  Please encode ints"
+      " in Big Endian order.\n\n");
+  Serial.println(
+      (String ("All further messages must contain the following prefix")) +
+      "\n    (3 bits: empty)" +
+      " (1 bit: motor power on=1|off=0)" +  // 1<<4
+      " (1 bit: laser galvos power on=1|off=0)" +  // 1<<3
+      " (1 bit: laser power on=1|off=0)" +  // 1<<2
+      " (1 bit: move motors? 1=yes|0=no)" +  // 1<<1
+      " (1 bit: move laser galvos? 1=yes|0=no)" +  // 1
+      " (int_32: num microseconds)" +
+      "\nIf move motors bit == yes, the message must proceed with:" +
+      "\n    (6 bits: empty) (1 bit: motor_2 direction) (1 bit: motor_1 dir)" +
+      " (int_32: num steps motor 1) (int_32: num steps motor 2)" +
+      "\nNext, if move laser galvos, the message must proceed with:" +
+      "\n    (int_12: x position) (int_12: y position)" +
+      "\nHappy printing!");
   Serial.flush();
 }
 
@@ -122,16 +133,35 @@ void setup() {
 void loop() {
   wdt_reset (); // reset watchdog counter
 
+  // read data from serial
   if (Serial.available()) {
-    // read data from serial
-    unsigned long step_pins[NUM_MOTORS];
-    for (int i=0; i<NUM_MOTORS; i++) {
-      step_pins[i] = serial_read_long();
-    }
+    byte instructions = serial_read_byte();
     unsigned long microsecs = serial_read_long();
-    byte directions = serial_read_byte();
 
-    // do stuff with gathered data
+    if (instructions & 2) {  // will move motors
+      byte directions = serial_read_byte();
+      unsigned long step_pins[NUM_MOTORS];
+      for (int i=0; i<NUM_MOTORS; i++) {
+        step_pins[i] = serial_read_long();
+      }
+    }
+    if (instructions & 1) {  // will move laser galvos
+
+      byte a = serial_read_byte();
+      byte b = serial_read_byte();
+      byte c = serial_read_byte();
+      uint32_t laser_x = (uint32_t) (a << 4) | (b >> 4);
+      uint32_t laser_y = (uint32_t) ((b & 0x0F) << 8) | c;
+    }
+
+    //  TODO: handle power on|off states
+    // " (1 bit: motor power on=1|off=0)" +  // 1<<4
+    // " (1 bit: laser galvos power on=1|off=0)" +  // 1<<3
+    // " (1 bit: laser power on=1|off=0)" +  // 1<<2
+
+    // TODO:  how to step motors and move lasers at same time?
+    //        should probably step the lasers like the motors
+    // do stuff with gathered instructions
     Serial.println(((String) "stepping for ") + microsecs + " microsecs...");
     set_direction(directions);
     step(step_pins, microsecs);
