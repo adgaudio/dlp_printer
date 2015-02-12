@@ -29,26 +29,27 @@ void setup() {
   Serial.println("Hello!");
   motor::configure();
   laser::configure();
+  Serial.println("Configured");
 
-  Serial.println(
-      String ("\nYou now control ") + motor::NUM_MOTORS + " stepper"
-      " motors and " + laser::NUM_LASER_MOTORS + "lasers.  Please encode ints"
-      " in Big Endian order.\n\n");
-  Serial.println(
-      (String ("All further messages must contain the following prefix")) +
-      "\n    (3 bits: empty)" +
-      " (1 bit: motor power on=1|off=0)" +  // 1<<4
-      " (1 bit: laser galvos power on=1|off=0)" +  // 1<<3
-      " (1 bit: laser power on=1|off=0)" +  // 1<<2
-      " (1 bit: move motors? 1=yes|0=no)" +  // 1<<1
-      " (1 bit: move laser galvos? 1=yes|0=no)" +  // 1
-      " (int_32: num microseconds)" +
-      "\nIf move motors bit == yes, the message must proceed with:" +
-      "\n    (6 bits: empty) (1 bit: motor_2 direction) (1 bit: motor_1 dir)" +
-      " (int_32: num steps motor 1) (int_32: num steps motor 2)" +
-      "\nNext, if move laser galvos, the message must proceed with:" +
-      "\n    (int_12: x position) (int_12: y position)" +
-      "\nHappy printing!");
+  /* Serial.println( */
+      /* String ("\nYou now control ") + motor::NUM_MOTORS + " stepper" */
+      /* " motors and " + laser::NUM_LASER_MOTORS + "lasers.  Please encode ints" */
+      /* " in Big Endian order.\n\n"); */
+  /* Serial.println( */
+      /* (String ("All further messages must contain the following prefix")) + */
+      /* "\n    (3 bits: empty)" + */
+      /* " (1 bit: motor power on=1|off=0)" +  // 1<<4 */
+      /* " (1 bit: laser galvos power on=1|off=0)" +  // 1<<3 */
+      /* " (1 bit: laser power on=1|off=0)" +  // 1<<2 */
+      /* " (1 bit: move motors? 1=yes|0=no)" +  // 1<<1 */
+      /* " (1 bit: move laser galvos? 1=yes|0=no)" +  // 1 */
+      /* " (int_32: num microseconds)" + */
+      /* "\nIf move motors bit == yes, the message must proceed with:" + */
+      /* "\n    (6 bits: empty) (1 bit: motor_2 direction) (1 bit: motor_1 dir)" + */
+      /* " (int_32: num steps motor 1) (int_32: num steps motor 2)" + */
+      /* "\nNext, if move laser galvos, the message must proceed with:" + */
+      /* "\n    (int_12: x position) (int_12: y position)" + */
+      /* "\nHappy printing!"); */
   Serial.flush();
 }
 

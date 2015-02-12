@@ -19,41 +19,44 @@ namespace motor {
 
   void set_num_steps_per_turn() {
     /* Configure stepper motor microstepping */
-    Serial.println("Please pass exactly 1 byte specifying the number of microsteps per turn: 0, 4, 8, 16, 32");
+    Serial.println("Microsteps?");
+    Serial.flush();
+      // Please pass exactly 1 byte specifying the number of microsteps
+      // per turn: 0, 4, 8, 16, 32
     int byte1 = (int) util::serial_read_byte();
     switch (byte1) {
       case 0:
-        Serial.println("Full Step (no microstepping)");
+        // Serial.println("Full Step (no microstepping)");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
         break;
       case 2:
-        Serial.println("1/2 Step Microstepping");
+        // Serial.println("1/2 Step Microstepping");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
         break;
       case 4:
-        Serial.println("1/4 Step Microstepping");
+        // Serial.println("1/4 Step Microstepping");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
         break;
       case 8:
-        Serial.println("1/8 Step Microstepping");
+        // Serial.println("1/8 Step Microstepping");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], LOW);
         break;
       case 16:
-        Serial.println("1/16 Step Microstepping");
+        // Serial.println("1/16 Step Microstepping");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], LOW);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], HIGH);
         break;
       case 32:
-        Serial.println("1/32 Step Microstepping");
+        // Serial.println("1/32 Step Microstepping");
         digitalWrite(MOTOR_MICROSTEP_PINS[0], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[1], HIGH);
         digitalWrite(MOTOR_MICROSTEP_PINS[2], HIGH);
