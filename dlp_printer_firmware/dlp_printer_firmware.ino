@@ -4,11 +4,13 @@
    galvanometer).
  */
 
+#include <Wire.h>  // need this for dac.  this lib is weird
 #include "avr/wdt.h"  // watchdog resets avr chip if it hangs
 #include "configuration.h"
 #include "motor.h"
 #include "laser.h"
 #include "util.h"
+#include "dac.h"
 
 
 // reset arduino after 8 seconds.
@@ -20,7 +22,7 @@ void setup() {
   wdt_enable(WDTO_8S);  // TODO: is WDTO_8S the same as WDT_DELAY?
 
   // serial stuff
-  Serial.begin(BAUDRATE);
+  Serial.begin(main::BAUDRATE);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
@@ -59,9 +61,10 @@ void loop() {
     byte instructions = util::serial_read_byte();
     unsigned long microsecs = util::serial_read_long();
 
+    byte directions;
+    unsigned long step_pins[motor::NUM_MOTORS];
     if (instructions & 2) {  // will move motors
-      byte directions = util::serial_read_byte();
-      unsigned long step_pins[motor::NUM_MOTORS];
+      directions = util::serial_read_byte();
       for (int i=0; i<motor::NUM_MOTORS; i++) {
         step_pins[i] = util::serial_read_long();
       }

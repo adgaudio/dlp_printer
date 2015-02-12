@@ -2,12 +2,13 @@
 #define __UTIL_H_INCLUDED__
 
 #include "Arduino.h"
+#include "avr/wdt.h"  // watchdog resets avr chip if it hangs
 
 namespace util {
-  void fail(String msg);
-  unsigned int gcd(unsigned long a, unsigned long b);
-  unsigned long lcm(unsigned long ints[], int num_ints);
-  byte serial_read_byte();
-  unsigned long serial_read_long();
+  extern void fail(String msg);
+  extern unsigned int gcd(unsigned long a, unsigned long b);
+  extern unsigned long lcm(unsigned long ints[], int num_ints);
+  extern byte serial_read_byte();
+  extern unsigned long serial_read_long();
 }
 #endif  // __UTIL_H_INCLUDED__

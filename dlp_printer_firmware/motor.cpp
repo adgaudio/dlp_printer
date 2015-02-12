@@ -67,7 +67,7 @@ namespace motor {
   }
 
 
-  void set_direction(byte directions) {
+  void set_direction(int directions) {
     /* Set the direction pin for each motor according to a bit sequence
        Big Endian Order: the first bit corresponds to the first motor
 
