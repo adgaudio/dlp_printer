@@ -19,7 +19,7 @@ namespace motor {
 
   void set_num_steps_per_turn() {
     /* Configure stepper motor microstepping */
-    Serial.println("Microsteps?");
+    Serial.println("Microsteps?");  // TODO: get from config instead
     Serial.flush();
       // Please pass exactly 1 byte specifying the number of microsteps
       // per turn: 0, 4, 8, 16, 32

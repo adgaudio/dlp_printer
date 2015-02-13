@@ -11,6 +11,7 @@
 #include "laser.h"
 #include "util.h"
 #include "dac.h"
+#include "eeprom.h"
 
 
 // reset arduino after 8 seconds.
@@ -37,7 +38,10 @@ void setup() {
       /* " in Big Endian order.\n\n"); */
   /* Serial.println( */
       /* (String ("All further messages must contain the following prefix")) + */
-      /* "\n    (3 bits: empty)" + */
+      /* "\n   " */
+      /* " (1 bit: update configuration 1=yes|0=no)" + */
+      /* " (1 bit: write configuration to EEPROM 1=yes|0=no)" + */
+      /* " (1 bit: empty)" + */
       /* " (1 bit: motor power on=1|off=0)" +  // 1<<4 */
       /* " (1 bit: laser galvos power on=1|off=0)" +  // 1<<3 */
       /* " (1 bit: laser power on=1|off=0)" +  // 1<<2 */
@@ -62,8 +66,17 @@ void loop() {
     byte instructions = util::serial_read_byte();
     unsigned long microsecs = util::serial_read_long();
 
+    if (instructions & 1<<7) {  // will update config
+      char update_eeprom = instructions & 1<<6;
+      // TODO:
+      // read data
+      // update global config somehow
+      // store to eeprom if necessary
+    }
+    // TODO only if motors?
     byte directions;
     unsigned long step_pins[motor::NUM_MOTORS];
+
     if (instructions & 2) {  // will move motors
       directions = util::serial_read_byte();
       for (int i=0; i<motor::NUM_MOTORS; i++) {
