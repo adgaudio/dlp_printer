@@ -18,6 +18,16 @@
 const unsigned long WDT_DELAY = 8000000;  // consider this non-configurable
 
 
+void configure_all() {
+
+  int microsteps = (int) util::serial_read_byte();
+  // TODO: maybe make a struct containing all fields relevant to configuration
+  // and have this link to eeprom somehow
+  motor::configure(microsteps);
+  laser::configure();
+}
+
+
 void setup() {
   // watchdog: reset after X seconds if counter not reset
   wdt_enable(WDTO_8S);  // TODO: is WDTO_8S the same as WDT_DELAY?
@@ -28,8 +38,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for Leonardo only
   }
   Serial.println("Hello!");
-  motor::configure();
-  laser::configure();
+  configure_all();
   Serial.println("Configured");
 
   /* Serial.println( */

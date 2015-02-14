@@ -2,7 +2,7 @@
 
 
 namespace eeprom {
-  void write(uint8_t start_idx, const uint8_t* data_arr, uint8_t size) {
+  void write(uint8_t& start_idx, const uint8_t* data_arr, uint8_t size) {
     /* Write `size` bytes of data to EEPROM
      * The available address space is indexed between 0 and 255
      *
@@ -17,7 +17,7 @@ namespace eeprom {
     }
   }
 
-  void read(uint8_t start_idx, uint8_t* data_arr, uint8_t size) {
+  void read(uint8_t& start_idx, uint8_t* data_arr, uint8_t size) {
     /* Read `size` bytes of data from EEPROM and write to `data_arr`
      *
      * `start_idx` - int between 0 and 255 that addresses the EEPROM
