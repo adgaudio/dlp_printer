@@ -5,6 +5,7 @@
 #include <Wire.h>
 
 #include "configuration.h"
+#include "util.h"
 
 namespace laser {
   extern void configure();

@@ -99,12 +99,12 @@ void loop() {
     } else {
       digitalWrite(laser::LASER_GALVO_POWER_PIN, LOW);
     }
-    // TODO: figure out when and how to turn this off safely
-    /* if (instructions & 4) {  // power laser BEAM on|off */
-      /* digitalWrite(LASER_POWER_PIN, HIGH); */
-    /* } else { */
-      /* digitalWrite(LASER_POWER_PIN, LOW); */
-    /* } */
+
+    if (instructions & 4) {  // power laser BEAM on|off
+      digitalWrite(LASER_POWER_PIN, HIGH);
+    } else {
+      digitalWrite(LASER_POWER_PIN, LOW);
+    }
     unsigned int directions;
     unsigned long step_pins[main::NUM_STEP_PINS];
     for (int i=0; i < main::NUM_STEP_PINS; i++) {

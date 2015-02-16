@@ -8,7 +8,6 @@ namespace laser {
 
   void configure() {
     /* Initial settings for Laser pins */
-    // TODO
     for (int i=0; i<2; i++) {
       pinMode(LASER_XY_PINS[i], OUTPUT);
     }
@@ -52,6 +51,9 @@ namespace laser {
   void step(int x_or_y, bool forward) {
     /* Move the x or y laser galvo forward or backward one step.*/
     PHASE[x_or_y] += forward;
+    if ((PHASE[x_or_y] > 4095) || (PHASE[x_or_y] < 0)) {
+      util::fail("laser move out of bounds");
+    }
     set_voltage(PHASE[x_or_y], DEVICE_ADDRS[x_or_y]);
   }
 }

@@ -60,9 +60,7 @@ namespace motor {
         digitalWrite(MOTOR_MICROSTEP_PINS[2], HIGH);
         break;
       default:
-        util::fail(String ("You passed an invalid byte: ") + (int) microsteps +
-            ". You must supply a valid number of stepper motor microsteps: " +
-            " 0, 2, 4, 8, 16 or 32");
+        util::fail("Invalid microsteps. Must be one of: 0, 2, 4, 8, 16 or 32");
         break;
     }
   }
