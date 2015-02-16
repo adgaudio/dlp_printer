@@ -60,38 +60,13 @@ var handle_incoming_data = function(rawmsg, sp) {
     log.serial(msg);
   }
 
-  // TODO: these matches are out of date
-  //respond to various messages from the arduino firmware
-  if (msg.match(
-    "Please pass exactly 1 byte specifying the number"
-      + " of microsteps per turn:"))
-  {
-    state.set("all_off");
-    microstep_listener(sp);
     // TODO: the arduino might choose to reset itself for whatever reason.  If
     // it does, I should save what's currently in the pipe and then, after
     // microstep listener, perhaps submit it again?
-  } else if (msg.match("Please pass 13 bytes at a time in Big Endian order")) {
+  if (msg.match("Hello!")) {
+    state.set("all_off");
     state.set("motors_on");
   }
-}
-
-var microstep_listener = function(sp) {
-  var message = new Buffer(1);
-  message[0] = argv.microstepping;
-  // clear the pipe
-  sp.drain(function(err) {
-    if (err) {
-      set.state("all_off");
-      throw err;
-    }});
-  sp.write(message, function(err) {
-    if (err) {
-      set.state("all_off");
-      throw err;
-    }
-    log('setting microsteps to: ' + argv.microstepping);
-  });
 }
 
 var send_serial = function(sp) {
