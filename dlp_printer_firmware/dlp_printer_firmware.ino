@@ -100,9 +100,9 @@ void loop() {
     }
 
     if (instructions & 4) {  // power laser BEAM on|off
-      digitalWrite(LASER_POWER_PIN, HIGH);
+      digitalWrite(laser::LASER_POWER_PIN, HIGH);
     } else {
-      digitalWrite(LASER_POWER_PIN, LOW);
+      digitalWrite(laser::LASER_POWER_PIN, LOW);
     }
     unsigned int directions;
     unsigned long step_pins[main::NUM_STEP_PINS];
