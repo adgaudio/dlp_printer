@@ -7,7 +7,7 @@
 namespace util {
   extern void fail(String msg);
   extern unsigned int gcd(unsigned long a, unsigned long b);
-  extern unsigned long lcm(unsigned long ints[], int num_ints);
+  extern unsigned long lcm0(unsigned long ints[], int num_ints);
   extern byte serial_read_byte();
   extern unsigned long serial_read_long();
 }

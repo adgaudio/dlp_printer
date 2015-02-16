@@ -41,15 +41,21 @@ namespace util {
   }
 
 
-  unsigned long lcm(unsigned long ints[], int num_ints) {
-    /* Find the Lowest Common Multiple of an array of ints
+  unsigned long lcm0(
+      unsigned long ints[], int num_ints, bool ignore_zeros=true) {
+    /* Find the Lowest Common Multiple of an array of ints.
+     * Ignore zeros in values by default.
      *
      * lcm = a*b / gcd(a, b)
      * lcm_of_many_ints = reduce(lcm, ints)
      */
-    unsigned long lcm_val = ints[0];
-    for (int i=1 ; i < num_ints ; i++) {
-      lcm_val = lcm_val * (ints[i] / gcd(lcm_val, ints[i]));
+    unsigned long lcm_val = 1;
+    for (int i=0 ; i < num_ints ; i++) {
+      if (ints[i] != 0) {
+        lcm_val = lcm_val * (ints[i] / gcd(lcm_val, ints[i]));
+      } else if (!ignore_zeros) {
+        return 0;
+      }
     }
     return lcm_val;
   }
