@@ -1,9 +1,6 @@
 #ifndef __CONFIGURATION_H_INCLUDED__
 #define __CONFIGURATION_H_INCLUDED__
-
-namespace main {
-  extern const int BAUDRATE;
-}
+#include <inttypes.h>
 
 namespace motor {
   extern const int MOTOR_STEP_PINS[];
@@ -19,6 +16,12 @@ namespace laser {
   extern const int LASER_POWER_PIN;
   extern const int LASER_GALVO_POWER_PIN;
   extern const int LASER_XY_PINS[]; // analog pins
+  extern const uint8_t DEVICE_ADDRS[];
+}
+
+namespace main {
+  extern const int BAUDRATE;
+  extern const int NUM_STEP_PINS;
 }
 
 #endif  // __CONFIGURATION_H_INCLUDED__

@@ -48,4 +48,20 @@ namespace laser {
   extern const int LASER_POWER_PIN = 3;
   extern const int LASER_GALVO_POWER_PIN = 2;  // TODO: use analog instead?
   extern const int LASER_XY_PINS[] = {1, 2};  // analog pins
+
+  // The i2c address to the DACs that control the laser galvos. format: {x, y}
+  // For MCP4725[A0] the address is 0x60 or 0x61
+  // For MCP4725[A1] the address is 0x62 or 0x63
+  // For MCP4725[A2] the address is 0x64 or 0x65
+  // # odd num has ADDR port tied to VCC
+  extern const uint8_t DEVICE_ADDRS[] = {0x60, 0x61};
+}
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// DERIVED VARIABLES.  DO NOT MODIFY BELOW HERE
+//
+
+namespace main {
+  extern const int NUM_STEP_PINS = motor::NUM_MOTORS + laser::NUM_LASER_MOTORS;
 }

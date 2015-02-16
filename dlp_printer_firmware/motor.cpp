@@ -68,18 +68,16 @@ namespace motor {
   }
 
 
-  void set_direction(int directions) {
-    /* Set the direction pin for each motor according to a bit sequence
-       Big Endian Order: the first bit corresponds to the first motor
-
-       `directions` is a 1-byte bitmap for recognized motors.
-       */
-    for (int jth_bit=0; jth_bit<8; jth_bit++) {
-      if (directions & (1<<(7-jth_bit))) {
-        digitalWrite(MOTOR_DIR_PINS[jth_bit], HIGH);
-      } else {
-        digitalWrite(MOTOR_DIR_PINS[jth_bit], LOW);
-      }
+  void set_direction(int motor_idx, bool forward) {
+    /* Set the direction pin for a particular motor
+     *
+     * `motor_idx` specifies which motor we're working with
+     * `forward` if false, set motor to move backwards
+     */
+    if (forward) {
+      digitalWrite(MOTOR_DIR_PINS[motor_idx], HIGH);
+    } else {
+      digitalWrite(MOTOR_DIR_PINS[motor_idx], LOW);
     }
   }
 }

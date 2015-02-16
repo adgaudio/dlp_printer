@@ -41,8 +41,8 @@ namespace util {
   }
 
 
-  unsigned long lcm0(
-      unsigned long ints[], int num_ints, bool ignore_zeros=true) {
+  unsigned long lcm(
+      unsigned long ints[], int num_ints, bool ignore_zeros) {
     /* Find the Lowest Common Multiple of an array of ints.
      * Ignore zeros in values by default.
      *
