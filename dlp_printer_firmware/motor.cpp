@@ -2,7 +2,7 @@
 
 namespace motor {
 
-  void configure(int microsteps) {
+  void configure() {
     /* Initial settings for Motor pins */
     for (int i=0 ; i<NUM_MOTORS; i++) {
       pinMode(MOTOR_STEP_PINS[i], OUTPUT);
@@ -13,7 +13,7 @@ namespace motor {
     }
     pinMode(MOTOR_POWER_PIN, OUTPUT);
     digitalWrite(MOTOR_POWER_PIN, HIGH);  // on by default
-    set_num_steps_per_turn(microsteps);
+    set_num_steps_per_turn(MICROSTEPS);
   }
 
 

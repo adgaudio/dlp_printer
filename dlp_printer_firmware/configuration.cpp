@@ -32,6 +32,10 @@ namespace motor {
   // The pin that the arduino should use to toggle on or off the motors
   // digitalWrite HIGH --> on.  digitalWrite LOW --> off
   extern const int MOTOR_POWER_PIN = 4;
+
+  // How much resolution to drive motors with.  Higher means more resolution.
+  // Options: 0, 4, 8, 16, 32
+  extern const int MICROSTEPS = 32;
 }
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -42,5 +46,6 @@ namespace motor {
 namespace laser {
   extern const int NUM_LASER_MOTORS = 2;
   extern const int LASER_POWER_PIN = 3;
+  extern const int LASER_GALVO_POWER_PIN = 2;  // TODO: use analog instead?
   extern const int LASER_XY_PINS[] = {1, 2};  // analog pins
 }

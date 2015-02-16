@@ -5,7 +5,7 @@
 #include "configuration.h"
 
 namespace motor {
-  extern void configure(int microsteps);
+  extern void configure();
   extern void set_num_steps_per_turn(int microsteps);
   extern void set_direction(int directions);
 }

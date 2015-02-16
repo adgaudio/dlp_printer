@@ -11,11 +11,13 @@ namespace motor {
   extern const int MOTOR_MICROSTEP_PINS[];
   extern const int NUM_MOTORS; //sizeof(MOTOR_STEP_PINS) / sizeof(MOTOR_STEP_PINS[0]);
   extern const int MOTOR_POWER_PIN;
+  extern const int MICROSTEPS;
 }
 
 namespace laser {
   extern const int NUM_LASER_MOTORS;
   extern const int LASER_POWER_PIN;
+  extern const int LASER_GALVO_POWER_PIN;
   extern const int LASER_XY_PINS[]; // analog pins
 }
 
