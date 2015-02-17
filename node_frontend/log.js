@@ -10,4 +10,10 @@ log.serial = function(msg) {
   console.log("<<< ".blue + msg);
 }
 
+
+log.gcode = function(msg) {
+  console.log("--- ".yellow + msg);
+}
+
+
 module.exports = log;

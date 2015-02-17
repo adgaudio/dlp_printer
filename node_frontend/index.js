@@ -1,14 +1,15 @@
-var com = require("serialport");
 require("colors");
-var repl = require("repl");
-var REPL_STARTED = false;
-var yargs = require("yargs");
-//repl.start(">>");
-
+var byline = require("byline");
+var com = require("serialport");
 var log = require("./log.js");
+var repl = require("repl");
+var stream = require("stream");
+var yargs = require("yargs");
 // global singleton func that sets and determines the current state of the
 // arduino board
 var state = require("./printer_state.js").state;
+
+var REPL_STARTED = false;
 
 // show available ports
 var list_ports_and_exit = function() {
@@ -70,6 +71,19 @@ var handle_incoming_data = function(rawmsg, sp) {
 }
 
 var send_serial = function(sp) {
+  /*
+   * 1. open gcode file
+   * 2. for line in file, convert to printer instructions
+   * 3. send to printer
+   *
+   * -- if unrecognized instruction, raise warning
+   */
+
+  byline(fs.createReadStream(argv.fp)).on('data', function(line) {
+    // if (comment) { log.gcode(comment); }
+    log.gcode(line.toString());
+    // TODO: do stuff with line
+  });
   s = function(a, b, c, d) {
   log('sending data to Serial');
   msg = new Buffer(13);
@@ -101,12 +115,12 @@ var send_serial = function(sp) {
 }
 
 var main = function() {
-  if (!argv.fp) {
+  if (!argv.serialport) {
     list_ports_and_exit();
     return 1
   }
   // Connect to Arduino
-  var sp = new com.SerialPort(argv.fp, {
+  var sp = new com.SerialPort(argv.serialport, {
     baudRate: argv.baudrate,
     parser: com.parsers.readline("\n")
   });
@@ -123,9 +137,15 @@ parse_argv = function() {
   return yargs
   .options('f', {
     alias: 'fp',
+    required: true,
+    describe: "filepath to a gcode file"
+    + " ie: --fp ./myprint.gcode",
+  })
+  .options('p', {
+    alias: 'serialport',
     required: false,  // handled in main
     describe: "device path to arduino serial port."
-    + " ie: --fp /dev/ttyACM0",
+    + " ie: --sp /dev/ttyACM0",
   })
   .options('m', {
     alias: 'microstepping',
