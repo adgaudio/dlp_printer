@@ -70,6 +70,64 @@ var handle_incoming_data = function(rawmsg, sp) {
   }
 }
 
+var msg_pack = function(gcode) {
+  // TODO: incomplete function
+  var msg = new Buffer(17);
+  var instructions = 0;  // TODO
+  if ("X" or "Y") {  // move galvos
+    instructions |= 1;
+  }
+  if ("Z" or "the side_to_side motion") {  // move motors
+    instructions |= 2;
+  }
+  if ("laser on") {  // laser power on during move
+    instructions |= 4;
+  }
+  if ("galvos on") {  // galvos powered on
+    instructions |= 8;
+  }
+  if ("motor power on") {  // stepper motors powered on
+    instructions |= 16;
+  }
+  var microseconds = 1000000;  // TODO
+  msg.writeUInt8(instructions);
+  msg.writeUInt32BE(microsecs);
+
+  if ("X" or "Y" or "Z" or "side_to_side") {
+    var directions = 0;
+    if ("Z forward") {
+      directions |= 1;
+    }
+    if ("side_to_side forward") {
+      directions |= 2;
+    }
+    if ("x forward") {
+      directions |= 4;
+    }
+    if ("y forward") {
+      directions |= 8;
+    }
+    msg.writeUInt8(directions);
+  }
+
+  if ("Z" or "side_to_side") {
+    var z_steps = 1;  // num steps to move
+    var side_to_side_steps = 0;
+    msg.writeUInt32BE(z_steps);
+    msg.writeUInt32BE(side_to_side_steps);
+  }
+
+  if ("X" or "Y") {
+    // TODO: is this way of controlling galvos appropriate?
+    var galvo_y_steps = 10;  // 12 bit number?
+    var galvo_x_steps = 20;  // 12 bit number?
+    msg.writeUInt16BE(
+      ((galvo_y_steps & 0x0FFF) << 4) | ((galvo_x_steps & 0x0F00) >> 8));  // y
+    msg.writeUInt8(galvo_xy & 0x00FF);  // x
+  }
+}
+
+
 var send_serial = function(sp) {
   /*
    * 1. open gcode file
@@ -82,28 +140,21 @@ var send_serial = function(sp) {
   byline(fs.createReadStream(argv.fp)).on('data', function(line) {
     // if (comment) { log.gcode(comment); }
     log.gcode(line.toString());
-    // TODO: do stuff with line
-  });
-  s = function(a, b, c, d) {
-  log('sending data to Serial');
-  msg = new Buffer(13);
-  msg.writeInt32BE(a, 0, false); // num steps on motor 1
-  msg.writeInt32BE(b, 4, false); // num steps on motor 2
-  msg.writeInt32BE(c, 8, false); // num microsecs to move for
-  msg.writeUInt8(d, 12, false); // bitmap of motor directions
-  // TODO: new format.  laser stuff
-  sp.write(msg, function() {
-    sp.drain(function() {
-      log('sent bytes');
+    var gcode = null;  // TODO
+    msg = msg_pack(gcode)
+    sp.write(msg, function() {
+      sp.drain(function() {
+        log('sent bytes');
+      });
     });
-  })
-  }
+    // TODO: handle what happens when state emits motors_on|off,  etc
+  });
 
   // TODO: make this queue up on nodejs's end to ensure these all go through!
-  ex = function() {
-  s(1*argv.microstepping, 1*argv.microstepping, 1000, 0<<7);
-  s(1*argv.microstepping, 1*argv.microstepping, 1000, 1<<7);
-  }
+  // ex = function() {
+  // s(1*argv.microstepping, 1*argv.microstepping, 1000, 0<<7);
+  // s(1*argv.microstepping, 1*argv.microstepping, 1000, 1<<7);
+  // }
   if (!REPL_STARTED) {
     log("Attaching repl for interactive use");
     var rs = repl.start("repl> ").on('exit', function() {
