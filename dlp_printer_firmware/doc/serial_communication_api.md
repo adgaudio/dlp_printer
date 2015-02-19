@@ -22,7 +22,7 @@ Steps:
       (1 bit: laser power on=1|off=0)  // 1<<2
       (1 bit: move motors? 1=yes|0=no)  // 1<<1
       (1 bit: move laser galvos? 1=yes|0=no)  // 1
-    - (int_32: num microseconds to apply this action for)
+    - (int_32: feedrate, or the "steps per second" speed to use)
 
   - If move motors == yes or move lasers == yes, message must
     proceed with:

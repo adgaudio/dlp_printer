@@ -59,4 +59,16 @@ namespace util {
     }
     return lcm_val;
   }
+
+
+  unsigned long maxarr(unsigned long ints[], int size) {
+    /* Find the largest in an array */
+    unsigned long max = ints[0];
+    for (int i=1; i < size; i++) {
+      if (ints[i] > max) {
+        max = ints[i];
+      }
+    }
+    return max;
+  }
 }

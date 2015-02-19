@@ -48,7 +48,7 @@ void loop() {
   // read data from serial
   if (Serial.available()) {
     byte instructions = util::serial_read_byte();
-    unsigned long microsecs = util::serial_read_long();
+    unsigned long feedrate = util::serial_read_long();
 
     if (instructions & 1<<7) {  // will update config
       char update_eeprom = instructions & 1<<6;
@@ -106,30 +106,32 @@ void loop() {
     }
     delete &i;
     // TODO: remove debug:
-    Serial.println(((String) "stepping for ") + microsecs + " microsecs...");
-    step(step_pins, microsecs, directions);
+    Serial.println(((String) "stepping at ") + feedrate + " steps per mm...");
+    step(step_pins, feedrate, directions);
   }
 }
 
-void step(unsigned long steps_per_pin[], unsigned long microsecs,
+void step(unsigned long steps_per_pin[], unsigned long feedrate,
           unsigned int directions) {
   /*
      Move motors and laser galvos simultaneously...
 
      For each motor pin, pulse a high-low sequence once per step over the
-     course of X `microsecs`. For each laser galvo, call the laser::step(...)
-     function.  Pulses happen as close to concurrently as
+     course of `feedrate` steps per second. For each laser galvo, call the
+     laser::step(...) function.  Pulses happen as close to concurrently as
      possible.  Accurate timing is not guaranteed due to interrupts and time
-     spent running computations.  You can compensate for this at the
-     software level.
+     spent running computations.  You can compensate for this at the software
+     level by adjusting the feedrate - a constant.
 
      `steps_per_pin` determine how many steps each motor or laser galvo should
        move.  Each element of the array corresponds to motor pins to pulse.
        Pass motor pins first and then laser pins second.
-     `microsecs` is a long (4 byte int) specifying how much time to move motors
+     `feedrate` is a long (4 byte int) specifying the speed at which to move
+       the motors (in # steps per second).
    */
   unsigned long total_num_steps = util::lcm(steps_per_pin, main::NUM_STEP_PINS);
-  unsigned long delay_between_steps = microsecs / total_num_steps - 2;
+  unsigned long delay_between_steps =  // in microseconds
+    util::maxarr(steps_per_pin, main::NUM_STEP_PINS) / feedrate;
 
   if (delay_between_steps >= WDT_DELAY) {
     util::fail("step(): Too much delay between motor pulses. Try increasing the"

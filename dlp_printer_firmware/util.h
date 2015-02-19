@@ -9,6 +9,7 @@ namespace util {
   extern unsigned int gcd(unsigned long a, unsigned long b);
   extern unsigned long lcm(
       unsigned long ints[], int num_ints, bool ignore_zeros=true);
+  extern unsigned long maxarr(unsigned long ints[], int size);
   extern byte serial_read_byte();
   extern unsigned long serial_read_long();
 }
