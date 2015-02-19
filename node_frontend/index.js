@@ -9,6 +9,7 @@ var yargs = require("yargs");
 // arduino board
 var state = require("./printer_state.js").state;
 
+var PRINTER_CACHE = function() {};  // stores current position data
 var REPL_STARTED = false;
 
 // show available ports
@@ -70,14 +71,36 @@ var handle_incoming_data = function(rawmsg, sp) {
   }
 }
 
+
+parse_line = function(gcode_str) {
+  /* Parse a string of GCode into an object */
+  var GCode = function() {};
+  GCode.raw = gcode_str;
+  var l = gcode_str.split(';');  // [gcode, comment]
+  if (l[1]) {  // log comments in gcode
+    GCode.comment = l[1];
+    gcode.log(GCode.comment);
+  }
+  var _gcode = l[0].split(/\s+/);
+  GCode.instruction = _gcode.shift();  // G0 G92 etc
+
+  var regexp = /([A-z]+)([0-9]+)/
+  _gcode.forEach(function(code) {
+    var m = regexp.exec(code);
+    GCode[m[1]] = parseInt(m[2], 10);
+  });
+  return GCode
+}
+
+
 var msg_pack = function(gcode) {
   // TODO: incomplete function
   var msg = new Buffer(17);
   var instructions = 0;  // TODO
-  if ("X" or "Y") {  // move galvos
+  if (gcode.X or gcode.Y) {  // move galvos
     instructions |= 1;
   }
-  if ("Z" or "the side_to_side motion") {  // move motors
+  if (gcode.Z or "the side_to_side motion") {  // move motors
     instructions |= 2;
   }
   if ("laser on") {  // laser power on during move
@@ -89,35 +112,39 @@ var msg_pack = function(gcode) {
   if ("motor power on") {  // stepper motors powered on
     instructions |= 16;
   }
-  var microseconds = 1000000;  // TODO
+  if (gcode.F) {
+    PRINTER_CACHE.F = gcode.F;
+  }
+  var feedrate = PRINTER_CACHE.F;
   msg.writeUInt8(instructions);
-  msg.writeUInt32BE(microsecs);
+  msg.writeUInt32BE(feedrate);
 
-  if ("X" or "Y" or "Z" or "side_to_side") {
+  if (gcode.X or gcode.Y or gcode.Z or "side_to_side") {
     var directions = 0;
-    if ("Z forward") {
-      directions |= 1;
+    if (gcode.Z >= 0) {
+      directions |= 1;  // Z moves up
     }
     if ("side_to_side forward") {
       directions |= 2;
     }
-    if ("x forward") {
+    if (gcode.X >= 0) {
       directions |= 4;
     }
-    if ("y forward") {
+    if (gcode.Y >= 0) {
       directions |= 8;
     }
     msg.writeUInt8(directions);
   }
 
-  if ("Z" or "side_to_side") {
-    var z_steps = 1;  // num steps to move
-    var side_to_side_steps = 0;
-    msg.writeUInt32BE(z_steps);
-    msg.writeUInt32BE(side_to_side_steps);
+  if (gcode.Z or "side_to_side") {
+    PRINTER_CACHE.Z = gcode.Z || PRINTER_CACHE.Z || 0
+    msg.writeUInt32BE(PRINTER_CACHE.Z);
+    PRINTER_CACHE.side_to_side_steps =  // TODO side_to_side?? (see next line)
+      gcode.side_to_side_steps || PRINTER_CACHE.side_to_side_steps || 0;
+    msg.writeUInt32BE(PRINTER_CACHE.side_to_side_steps);
   }
 
-  if ("X" or "Y") {
+  if (gcode.X or gcode.Y) {
     // TODO: is this way of controlling galvos appropriate?
     var galvo_y_steps = 10;  // 12 bit number?
     var galvo_x_steps = 20;  // 12 bit number?
@@ -125,6 +152,7 @@ var msg_pack = function(gcode) {
       ((galvo_y_steps & 0x0FFF) << 4) | ((galvo_x_steps & 0x0F00) >> 8));  // y
     msg.writeUInt8(galvo_xy & 0x00FF);  // x
   }
+  return msg;
 }
 
 
@@ -139,8 +167,9 @@ var send_serial = function(sp) {
 
   byline(fs.createReadStream(argv.fp)).on('data', function(line) {
     // if (comment) { log.gcode(comment); }
-    log.gcode(line.toString());
-    var gcode = null;  // TODO
+    var gcode = parse_line(line);
+    log.gcode(line.comment);
+
     msg = msg_pack(gcode)
     sp.write(msg, function() {
       sp.drain(function() {
