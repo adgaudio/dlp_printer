@@ -47,8 +47,14 @@ void loop() {
 
   // read data from serial
   if (Serial.available()) {
+    // initialize variables
     byte instructions = util::serial_read_byte();
-    unsigned long feedrate = util::serial_read_long();
+    unsigned long feedrate;
+    unsigned int directions;
+    unsigned long step_pins[main::NUM_STEP_PINS];
+    for (int i=0; i < main::NUM_STEP_PINS; i++) {
+      step_pins[i] = 0;
+    }
 
     if (instructions & 1<<7) {  // will update config
       char update_eeprom = instructions & 1<<6;
@@ -76,13 +82,10 @@ void loop() {
     } else {
       digitalWrite(laser::LASER_POWER_PIN, LOW);
     }
-    unsigned int directions;
-    unsigned long step_pins[main::NUM_STEP_PINS];
-    for (int i=0; i < main::NUM_STEP_PINS; i++) {
-      step_pins[i] = 0;
-    }
 
-    if (instructions & 3) {  // receive directions
+    if (instructions & 3) {  // receive feedrate and directions
+      // how fast to move motors|galvos?  in steps per microsecond
+      feedrate = util::serial_read_long();
       // move motors or galvos forward|backward?
       directions = util::serial_read_byte();
     }
@@ -108,6 +111,10 @@ void loop() {
     // TODO: remove debug:
     Serial.println(((String) "stepping at ") + feedrate + " steps per mm...");
     step(step_pins, feedrate, directions);
+    if (directions & 1) {
+      // M100 -- swipe motor 2 side to side
+      motor::slide_vat();
+    }
   }
 }
 
@@ -117,7 +124,7 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
      Move motors and laser galvos simultaneously...
 
      For each motor pin, pulse a high-low sequence once per step over the
-     course of `feedrate` steps per second. For each laser galvo, call the
+     course of `feedrate` steps per microsecond. For each laser galvo, call the
      laser::step(...) function.  Pulses happen as close to concurrently as
      possible.  Accurate timing is not guaranteed due to interrupts and time
      spent running computations.  You can compensate for this at the software
@@ -127,7 +134,7 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
        move.  Each element of the array corresponds to motor pins to pulse.
        Pass motor pins first and then laser pins second.
      `feedrate` is a long (4 byte int) specifying the speed at which to move
-       the motors (in # steps per second).
+       the motors (in # steps per microsecond).
    */
   unsigned long total_num_steps = util::lcm(steps_per_pin, main::NUM_STEP_PINS);
   unsigned long delay_between_steps =  // in microseconds

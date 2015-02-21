@@ -78,4 +78,16 @@ namespace motor {
       digitalWrite(MOTOR_DIR_PINS[motor_idx], LOW);
     }
   }
+
+
+  void slide_vat(int motor_idx, long nsteps, int feedrate) {
+    /* Slide the vat side to side */
+    long delay_bt_steps = nsteps / feedrate;
+    while (nsteps-- > 0) {
+      digitalWrite(MOTOR_DIR_PINS[motor_idx], HIGH);
+      delayMicroseconds(2);
+      digitalWrite(MOTOR_DIR_PINS[motor_idx], LOW);
+      delayMicroseconds(delay_bt_steps - 2);
+    }
+  }
 }
