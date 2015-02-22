@@ -1,4 +1,5 @@
 // Configure logging
+require("colors");
 
 
 function log(msg) {

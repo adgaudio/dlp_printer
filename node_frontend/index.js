@@ -1,4 +1,3 @@
-require("colors");
 var byline = require("byline");
 var com = require("serialport");
 var log = require("./log.js");
@@ -13,7 +12,7 @@ var PRINTER_CACHE = function() {};  // stores current position data
 var REPL_STARTED = false;
 
 // show available ports
-var list_ports_and_exit = function() {
+function list_ports_and_exit() {
   com.list(function (err, ports) {
     log("--------");
     ports.forEach(function(port) {
@@ -28,7 +27,7 @@ var list_ports_and_exit = function() {
   log('Please specify one of these available device ports...');
 }
 
-var init_serial = function(sp) {
+function init_serial(sp) {
   /* Initialize the arduino.
   * Define how to handle messages from the serial port */
   sp.on('open', function(err) {
@@ -56,7 +55,7 @@ var init_serial = function(sp) {
 }
 
 
-var handle_incoming_data = function(rawmsg, sp) {
+function handle_incoming_data(rawmsg, sp) {
   var msg = rawmsg.toString('utf-8').trim()
   if (msg) {
     log.serial(msg);
@@ -72,7 +71,7 @@ var handle_incoming_data = function(rawmsg, sp) {
 }
 
 
-parse_line = function(gcode_str) {
+function parse_line(gcode_str) {
   /* Parse a string of GCode into an object */
   var GCode = function() {};
   GCode.raw = gcode_str;
@@ -82,7 +81,7 @@ parse_line = function(gcode_str) {
     gcode.log(GCode.comment);
   }
   var _gcode = l[0].split(/\s+/);
-  GCode.instruction = _gcode.shift();  // G0 G92 etc
+  GCode.instruction = _gcode.shift();  // G0 G1 M100 etc
 
   var regexp = /([A-z]+)([0-9]+)/
   _gcode.forEach(function(code) {
@@ -93,70 +92,120 @@ parse_line = function(gcode_str) {
 }
 
 
-var msg_pack = function(gcode) {
-  // TODO: incomplete function
-  var msg = new Buffer(17);
-  var instructions = 0;  // TODO
-  if (gcode.X or gcode.Y) {  // move galvos
-    instructions |= 1;
+function msg_pack_ismove(gcode) {
+  /* Is this gcode line attempting to move the motors or laser galvos? */
+  var move_instruction = /^(G0|G1|M100)$/;
+  var motor_move = false;
+  var laser_move = false;
+  if (gcode.instruction.match(move_instruction)) {
+    if (gcode.Z || gcode.S) {
+      motor_move = true;
+    }
+    if (gcode.X || gcode.Y) {
+      laser_move = true;
+    }
   }
-  if (gcode.Z or "the side_to_side motion") {  // move motors
-    instructions |= 2;
-  }
-  if ("laser on") {  // laser power on during move
-    instructions |= 4;
-  }
-  if ("galvos on") {  // galvos powered on
-    instructions |= 8;
-  }
-  if ("motor power on") {  // stepper motors powered on
-    instructions |= 16;
-  }
-  if (gcode.F) {
-    PRINTER_CACHE.F = gcode.F;
-  }
-  var feedrate = PRINTER_CACHE.F;
-  msg.writeUInt8(instructions);
-  msg.writeUInt32BE(feedrate);
+  return {motor: motor_move, laser_galvo: laser_move};
+}
 
-  if (gcode.X or gcode.Y or gcode.Z or "side_to_side") {
-    var directions = 0;
-    if (gcode.Z >= 0) {
-      directions |= 1;  // Z moves up
-    }
-    if ("side_to_side forward") {
-      directions |= 2;
-    }
-    if (gcode.X >= 0) {
-      directions |= 4;
-    }
-    if (gcode.Y >= 0) {
-      directions |= 8;
-    }
-    msg.writeUInt8(directions);
-  }
 
-  if (gcode.Z or "side_to_side") {
-    PRINTER_CACHE.Z = gcode.Z || PRINTER_CACHE.Z || 0
-    msg.writeUInt32BE(PRINTER_CACHE.Z);
-    PRINTER_CACHE.side_to_side_steps =  // TODO side_to_side?? (see next line)
-      gcode.side_to_side_steps || PRINTER_CACHE.side_to_side_steps || 0;
-    msg.writeUInt32BE(PRINTER_CACHE.side_to_side_steps);
+function msg_pack_get_buflen(move) {
+  /* Calculate the number of bytes to send to the Arduino */
+  var _buflen = 1;
+  if (move.motor || move.laser_galvo) {
+    _buflen += 5;
   }
+  if (move.motor) {
+    _buflen += 8;
+  }
+  if (move.laser_galvo) {
+    _buflen += 3;
+  }
+  return _buflen;
+}
 
-  if (gcode.X or gcode.Y) {
+
+function msg_pack(gcode) {
+  /* Build a message to send to the Arduino */
+  var move = msg_pack_ismove(gcode);
+  var msg = new Buffer(msg_pack_get_buflen(move));
+  var byte_offset = 0;
+  msg.writeUInt8(msg_pack_instructions(move), byte_offset++);
+
+  if (move.motor || move.laser_galvo) {
+    // feedrate: how fast to move in #steps per microsecond
+    PRINTER_CACHE.feedrate = gcode.F | 0x0;
+    msg.writeUInt32BE(PRINTER_CACHE.feedrate, byte_offset);
+    byte_offset += 4;
+    // which direction to move motors and galvos
+    msg.writeUInt8(msg_pack_directions(gcode), byte_offset++);
+  }
+  if (move.motor) {
+    // How many steps to move motors
+    msg.writeUInt32BE(gcode.S | 0x0, byte_offset);  // slides vat side to side
+    byte_offset += 4;
+    PRINTER_CACHE.Z += (gcode.Z | 0x0);  // store last val
+    msg.writeUInt32BE(gcode.Z | 0x0, byte_offset);
+    byte_offset += 4;
+  }
+  if (move.laser_galvo) {
+    // How many steps to move laser galvos
     // TODO: is this way of controlling galvos appropriate?
-    var galvo_y_steps = 10;  // 12 bit number?
-    var galvo_x_steps = 20;  // 12 bit number?
+    // assumes X and Y must be 12 bit numbers
     msg.writeUInt16BE(
-      ((galvo_y_steps & 0x0FFF) << 4) | ((galvo_x_steps & 0x0F00) >> 8));  // y
-    msg.writeUInt8(galvo_xy & 0x00FF);  // x
+      ((gcode.Y & 0x0FFF) << 4) | ((gcode.X & 0x0F00) >> 8), byte_offset);
+    byte_offset += 2;
+    msg.writeUInt8(gcode.X & 0x00FF, byte_offset++);
   }
   return msg;
 }
 
 
-var send_serial = function(sp) {
+function msg_pack_instructions(move) {
+  // build the instruction byte to inform printer what to receive and do
+  var instructions = 0;
+  // this sub-section useful to limit num bytes sent to arduino.
+  // TODO: necessary?
+  if (move.laser_galvo) {
+    instructions |= 1;
+  }
+  if (move.motor) {
+    instructions |= 2;
+  }
+  if (gcode.E) {  // laser power on
+    instructions |= 4;
+  }
+  if ("galvos on") {  // galvos powered on
+    // TODO: really, always on?
+    instructions |= 8;
+  }
+  if ("motor power on") {  // stepper motors powered on
+    // TODO: really, always on?
+    instructions |= 16;
+  }
+  return instructions;
+}
+
+function msg_pack_directions(gcode) {
+  // which direction to move motors or galvos
+  var directions = 0;
+  if (gcode.S > 0) {
+    directions |= 1;  // tell Arduino to slide vat side to side after moves
+  }
+  if (gcode.Z >= 0) {
+    directions |= 2;  // Z moves up
+  }
+  if (gcode.X >= 0) {
+    directions |= 4;
+  }
+  if (gcode.Y >= 0) {
+    directions |= 8;
+  }
+  return directions;
+}
+
+
+function send_serial(sp) {
   /*
    * 1. open gcode file
    * 2. for line in file, convert to printer instructions
@@ -173,7 +222,7 @@ var send_serial = function(sp) {
     msg = msg_pack(gcode)
     sp.write(msg, function() {
       sp.drain(function() {
-        log('sent bytes');
+        log('sent bytes: ' + msg.toJSON());
       });
     });
     // TODO: handle what happens when state emits motors_on|off,  etc
@@ -194,7 +243,7 @@ var send_serial = function(sp) {
   }
 }
 
-var main = function() {
+function main() {
   if (!argv.serialport) {
     list_ports_and_exit();
     return 1
@@ -208,12 +257,12 @@ var main = function() {
   // init serial and then starts reading/writing data
   init_serial(sp);
 
-  state.on('motors_on', function(stream) {
+  state.on('motors_on', function() {
     send_serial(sp);
   });
 }
 
-parse_argv = function() {
+function parse_argv() {
   return yargs
   .options('f', {
     alias: 'fp',
