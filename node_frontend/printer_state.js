@@ -45,4 +45,4 @@ PrinterState.prototype.set = function(event) {
   }
 }
 
-exports.state = new PrinterState();
+module.exports = new PrinterState();
