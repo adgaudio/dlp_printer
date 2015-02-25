@@ -1,3 +1,5 @@
+var byline = require("byline");
+var fs = require('fs');
 var repl = require("repl");
 var yargs = require("yargs");
 // global singleton func that sets and determines the current state of the
@@ -7,11 +9,12 @@ var state = require("./printer_state.js");
 var serial = require("./serial_communication.js");
 
 var REPL_STARTED = false;
+var PRINT_STARTED = false;
 
 
 function parse_line(gcode_str) {
   /* Parse a string of GCode into an object */
-  var GCode = function() {};
+  var GCode = {};
   GCode.raw = gcode_str;
   var l = gcode_str.split(';');  // [gcode, comment]
   if (l[1]) {  // log comments in gcode
@@ -26,6 +29,7 @@ function parse_line(gcode_str) {
     var m = regexp.exec(code);
     GCode[m[1]] = parseInt(m[2], 10);
   });
+  log.gcode(JSON.stringify(GCode));
   return GCode
 }
 
@@ -39,40 +43,47 @@ function send_serial(sp) {
    * -- if unrecognized instruction, raise warning
    */
 
-  byline(fs.createReadStream(argv.fp)).on('data', function(line) {
+  var stream = byline(fs.createReadStream(argv.fp));
+  stream.on('end', function() {
+    // send 3 times to guarantee no errors
+    serial.send(sp, "end of stream");
+    serial.send(sp, "end of stream");
+    serial.send(sp, "end of stream");
+    state.set('all_off');
+  });
+  stream.on('data', function(line) {
     // if (comment) { log.gcode(comment); }
-    var gcode = parse_line(line);
-    log.gcode(line.comment);
-
+    var gcode = parse_line(line.toString());
+    if (!gcode) {
+      return;
+    }
     msg = serial.msg_pack(gcode)
-    sp.write(msg, function() {
-      sp.drain(function() {
-        log('sent bytes: ' + msg.toJSON());
-      });
-    });
+    serial.send(sp, msg)
     // TODO: handle what happens when state emits motors_on|off,  etc
   });
-
-  // TODO: make this queue up on nodejs's end to ensure these all go through!
-  // ex = function() {
-  // s(1*argv.microstepping, 1*argv.microstepping, 1000, 0<<7);
-  // s(1*argv.microstepping, 1*argv.microstepping, 1000, 1<<7);
-  // }
-  if (!REPL_STARTED) {
-    log("Attaching repl for interactive use");
-    var rs = repl.start("repl> ").on('exit', function() {
-      log("EXIT");
-      process.exit();
-    });
-    REPL_STARTED = true;
-  }
 }
 
 function main() {
   var sp = serial.get_connection(argv.serialport, argv.baudrate);
-  state.on('motors_on', function() {
-    send_serial(sp);
+  state.on('all_on', function() {
+    if (argv.fp == "repl") {
+      if (!REPL_STARTED) {
+        log("Attaching repl for interactive use");
+        var rs = repl.start("repl> ").on('exit', function() {
+          log("EXIT");
+          process.exit();
+        });
+        REPL_STARTED = true;
+      }
+    } else if (!PRINT_STARTED) {
+      log("Starting print");
+      PRINT_STARTED = true;
+      send_serial(sp);
+    } else {
+      log("Arduino reset while print in progress.  Will hopefully recover.");
+    }
   });
+  // TODO: state.on('all_off', function() {});
 }
 
 function parse_argv() {
@@ -80,8 +91,9 @@ function parse_argv() {
   .options('f', {
     alias: 'fp',
     required: true,
-    describe: "filepath to a gcode file"
-    + " ie: --fp ./myprint.gcode",
+    describe: "filepath to a gcode file.  "
+    + " ie: --fp ./myprint.gcode   ..."
+    + " if you pass --fp repl, load a repl instead.",
   })
   .options('p', {
     alias: 'serialport',

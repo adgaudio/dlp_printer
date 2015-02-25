@@ -1,4 +1,3 @@
-var byline = require("byline");
 var com = require("serialport");
 var stream = require("stream");
 
@@ -48,7 +47,7 @@ function init_serial(sp) {
   sp.on('open', function(err) {
     if (err) {
       state.set("all_off");
-      log('failed to open: '+ error);
+      log.error('failed to open serial port: '+ err);
       throw err;
     }
     log('opened Serial port');
@@ -57,13 +56,13 @@ function init_serial(sp) {
     sp.on('error', function(err) {
       state.set("all_off");
       if (err) {
-        log.serial('something related to arduino failed!');
+        log.error('something related to arduino failed!');
         throw err;
       }});
     sp.on('close', function(err) {
       state.set("all_off");
       if (err) {
-        log.serial('arduino connection closed with failure!');
+        log.error('arduino connection closed with failure!');
         throw err;
       }});
   });
@@ -76,23 +75,21 @@ function handle_incoming_data(rawmsg, sp) {
   if (msg) {
     log.serial(msg);
   }
-
-    // TODO: the arduino might choose to reset itself for whatever reason.  If
-    // it does, I should save what's currently in the pipe and then, after
-    // microstep listener, perhaps submit it again?
   if (msg.match("Hello!")) {
-    state.set("all_off");
-    state.set("motors_on");
+    if (PRINTER_CACHE.last_msg) {
+      PRINTER_CACHE.please_resend = true;
+    }
+    state.set("all_on");
   }
 }
 
 
 module.exports.msg_pack = function(gcode) {
   /* Build a message to send to the Arduino */
-  var move = msg_pack_ismove(gcode);
-  var msg = new Buffer(msg_pack_get_buflen(move));
+  var move = _msg_pack_ismove(gcode);
+  var msg = new Buffer(_msg_pack_get_buflen(move));
   var byte_offset = 0;
-  msg.writeUInt8(msg_pack_instructions(move), byte_offset++);
+  msg.writeUInt8(_msg_pack_instructions(gcode, move), byte_offset++);
 
   if (move.motor || move.laser_galvo) {
     // feedrate: how fast to move in #steps per microsecond
@@ -100,7 +97,7 @@ module.exports.msg_pack = function(gcode) {
     msg.writeUInt32BE(PRINTER_CACHE.feedrate, byte_offset);
     byte_offset += 4;
     // which direction to move motors and galvos
-    msg.writeUInt8(msg_pack_directions(gcode), byte_offset++);
+    msg.writeUInt8(_msg_pack_directions(gcode), byte_offset++);
   }
   if (move.motor) {
     // How many steps to move motors
@@ -119,12 +116,11 @@ module.exports.msg_pack = function(gcode) {
     byte_offset += 2;
     msg.writeUInt8(gcode.X & 0x00FF, byte_offset++);
   }
-  PRINTER_CACHE.last_msg = msg;
   return msg;
 }
 
 
-function msg_pack_ismove(gcode) {
+function _msg_pack_ismove(gcode) {
   /* Is this gcode line attempting to move the motors or laser galvos? */
   var move_instruction = /^(G0|G1|M100)$/;
   var motor_move = false;
@@ -141,7 +137,7 @@ function msg_pack_ismove(gcode) {
 }
 
 
-function msg_pack_get_buflen(move) {
+function _msg_pack_get_buflen(move) {
   /* Calculate the number of bytes to send to the Arduino */
   var _buflen = 1;
   if (move.motor || move.laser_galvo) {
@@ -157,7 +153,7 @@ function msg_pack_get_buflen(move) {
 }
 
 
-function msg_pack_instructions(move) {
+function _msg_pack_instructions(gcode, move) {
   // build the instruction byte to inform printer what to receive and do
   var instructions = 0;
   // this sub-section useful to limit num bytes sent to arduino.
@@ -182,7 +178,8 @@ function msg_pack_instructions(move) {
   return instructions;
 }
 
-function msg_pack_directions(gcode) {
+
+function _msg_pack_directions(gcode) {
   // which direction to move motors or galvos
   var directions = 0;
   if (gcode.S > 0) {
@@ -198,4 +195,72 @@ function msg_pack_directions(gcode) {
     directions |= 8;
   }
   return directions;
+}
+
+
+function send(sp, msg) {
+  /* Write an n-byte buffer to the serial port, and flush (ie drain) it to
+  * ensure it fully sends.
+  *
+  * Resend messages if PRINTER_CACHE.please_resend is set,
+  * and maintain a count of num consecutive resends.
+  * If resend count >3, stop and throw an exception.
+  * If successfully sent 2 messages in a row, assume printer is healthy
+  * and reset the resend count.
+  */
+  if (PRINTER_CACHE.n_resends > 3) {
+    state.set("all_off");
+    throw "Just resent the same message 3x in a row.  msg: " + msg.toJSON();
+  } else if (PRINTER_CACHE.please_resend) {
+    log("Resending last serial message: " + PRINTER_CACHE.last_msg.toJSON());
+    PRINTER_CACHE.please_resend = false;
+    inc("n_resends", PRINTER_CACHE);
+    send(sp, PRINTER_CACHE.last_msg);
+  }
+  if (msg == "end of stream") {
+    return;
+  } else {
+    _send(sp, msg);
+  }
+}
+module.exports.send = send;
+
+
+var _send_handle_err = function(err) {
+  if (err) {
+    log.error(err);
+    PRINTER_CACHE.please_resend = true;
+    // assume an external process will call send(...)
+  }
+}
+
+
+function _send(sp, msg) {
+  // actually send msg to serial and drain (flush) the serial port buffer
+  sp.write(msg, function(err) {
+    _send_handle_err(err);
+    sp.drain(function(err) {
+      if (err) {
+      _send_handle_err(err);
+      } else {
+        log('sent bytes: ' + msg.toJSON());
+        if (inc("comm_succ", PRINTER_CACHE) >= 2) {
+          PRINTER_CACHE.comm_succ = 0;
+          PRINTER_CACHE.n_resends = 0;
+        }
+      }
+    });
+  });
+  PRINTER_CACHE.last_msg = msg;
+  var sleep = require('sleep');
+  sleep.sleep(1);
+}
+
+
+function inc(varname, object) {
+  if (!object[varname]) {
+    return object[varname] = 1;
+  } else {
+    return ++object[varname];
+  }
 }

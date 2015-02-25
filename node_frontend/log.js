@@ -7,13 +7,18 @@ function log(msg) {
 }
 
 
+log.error = function(msg) {
+  console.error("ERROR ".red + msg);
+}
+
+
 log.serial = function(msg) {
   console.log("<<< ".blue + msg);
 }
 
 
 log.gcode = function(msg) {
-  console.log("--- ".yellow + msg);
+  console.log("GCode: ".yellow + msg);
 }
 
 
