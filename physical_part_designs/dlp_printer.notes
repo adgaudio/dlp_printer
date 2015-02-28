@@ -1,0 +1,82 @@
+Designing a DLP (stereolithography) printer.
+
+electronics:
+  x 3 nema 23 stepper motors
+  x 2 pololu stepper drivers
+  - 
+
+frame:
+  - <maybe> uv filters: http://www.edmundoptics.com/optics/optical-filters/longpass-edge-filters/flexible-thin-film-uv-filters/1873
+  - <or> uv window film: mhttp://www.amazon.com/Gila-LES361-Control-Residential-Platinum/dp/B000KKM8EG/ref=sr_1_1?ie=UTF8&qid=1361744130&sr=8-1&keywords=uv+film
+  x aluminum extrusions & nuts
+
+projector:
+  - ?
+  - diy laser scanning galvanometers for now
+
+
+resin:
+  N resin: Bucktown Polymers or Spotamaterials.
+  N dye: Opaque Yellow Castin’ Craft dye from Environmental Technologies Inc – eti-usa.com
+  x spota materials + dye
+
+
+vat(s):
+  - bottom: clear glass bottom rather than acrylic (acrylic can absorb uv)
+    - round flashlight glass
+      x 52mm
+      - other sizes
+    x square borosilicate glass
+  x pdms: slygard 184 http://www.dowcorning.com/applications/search/default.aspx?r=131en
+    - bought dimethicone instead from amazon
+  x DAP silicone sealant (sealing glass to vat)
+  x 608zz bearings
+  x m8 shoulder bolts & appropriate wing nut (m6 in my case)
+
+build platform:
+  N glass?
+  N mounted on plastic plate?
+  x mounted on a metal plate with holes in it
+  - fastening springs/plungers that let the bp move it necessary so it doesn't break the vat it it hits it too hard
+
+  x connected to platform frame:
+    x mounted on (8020) extrusion in T shape
+      x 1 20x20 extrusion of y axis side length + some extra
+    x 2 t-slot nuts (connecting platform to extrusion)
+Z axis:
+  - platform frame connected to rods
+  x 2 smooth rods
+    - 6112K15 $23.56
+    - 2 fasteners (printed) mounting smooth rod to extrusion
+  x 2 or 4 (printed) lm8uu bearing holders
+    - 4 or 8 t-slot nuts
+  - 2 or 4 lm8uu bearings
+    x threaded rods:
+      x 1 threaded/acme rod
+        - mcmaster 98940A619 $38.18 3ft
+      x 2 threaded nut and flange
+        - mcmaster 95072A129 $24.94 (nut)
+        - mcmaster 95082A641 $32.72 (flange)
+      x 2 rigid couplers (motor to rod)
+        - mcmaster 6115K21 $20.11 3ft
+    - tops of rods:
+      x 1 Flanged-Sleeve Bearing (for threaded rod)
+        - mcmaster 6338K415 $0.81
+      - 2 shaft collars (printed) + bushings + (printed) holders to attach ends of smooth rods to aluminum extrusion at top
+
+Frame:
+  x Top & bottom: square shape aluminum extrusions
+  x Sides (all same length): 
+    - 1 40x20 extrusions for vat mount
+    - 1 20x20 extrusions for motor (rod) mount
+    - 2 20x20 extrusions for build platform to 
+  x connecting motor to frame:
+    - 2 pieces smooth rod, each >= 1/2 width (x axis)
+      - 6112K15 $23.56
+    - 1 piece of 20x20 extrusion for vertical part
+      - (just get one as long as a side and then cut to length)
+    - 1 20x20 extrusion sitting on top of frame
+    - 2 lm8uu bearing 
+    - 2 printed holders
+    - 8 t-slot nuts
+  x connecting hinge to frame:
