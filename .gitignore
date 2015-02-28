@@ -4,3 +4,4 @@ old
 *.stl
 *.gcode
 .ropeproject
+external

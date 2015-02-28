@@ -1,0 +1,12 @@
+# Lists the openscad dependencies and tools needed
+#
+# You can use a script download these.  This script is available here:
+# https://raw.githubusercontent.com/adgaudio/3dPrinter/master/bootstrap_deps.sh
+#
+# To magically install things, do this from the current directory:
+# url=https://raw.githubusercontent.com/adgaudio/3dPrinter/master/bootstrap_deps.sh
+# wget -O - $url 1>/dev/null | bash
+#
+adgaudio/shape_primitives.scad-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/lib/shape_primitives.scad
+adgaudio/shared_vars.scad-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/shared_vars.scad
+openscad_maker.py-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/openscad_maker.py
