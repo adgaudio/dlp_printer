@@ -1,4 +1,4 @@
-include <../lib/shape_primitives.scad>;
+include <adgaudio/shape_primitives.scad>;
 include <shared_vars.scad>;
 
 

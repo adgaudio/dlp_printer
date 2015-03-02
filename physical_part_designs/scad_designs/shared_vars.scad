@@ -1,4 +1,4 @@
-include <../shared_vars.scad>;
+include <adgaudio/shared_vars.scad>;
 
 motor_z = 2 + 55;
 motor_x = 2 + 56.25;

@@ -1,5 +1,5 @@
 include <shared_vars.scad>;
-include <../lib/shape_primitives.scad>;
+include <adgaudio/shape_primitives.scad>;
 
 
 module vat(r_lense_lip=vat_r_lense_lip,
