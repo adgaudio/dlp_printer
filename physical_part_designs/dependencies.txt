@@ -9,4 +9,4 @@
 #
 adgaudio/shape_primitives.scad-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/lib/shape_primitives.scad
 adgaudio/shared_vars.scad-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/shared_vars.scad
-openscad_maker.py-->https://raw.githubusercontent.com/adgaudio/3dPrinter/master/openscad_maker.py
+openscad_exporter-->https://raw.githubusercontent.com/adgaudio/OpenSCAD-Tools/master/openscad_exporter
