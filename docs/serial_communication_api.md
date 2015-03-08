@@ -33,8 +33,8 @@ Steps:
       (1 bit: motor_2 dir 1=forward|0=backward)  // 1<<1
       (1 bit: motor_1 dir 1=forward|0=backward)  // 1  ... aka M100, or slide vat side to side.
   - If move motors == yes, message must proceed with:
-    - (int_32: num steps motor 2)
-    - (int_32: num steps motor 1)
+    - (int_32: num steps motor 2)  // z axis
+    - (int_32: num steps motor 1)  // moves the vat
   - If move laser galvos, the message must proceed with:
     - (int_12: y position)
     - (int_12: x position)

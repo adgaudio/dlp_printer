@@ -111,9 +111,9 @@ void loop() {
     // TODO: remove debug:
     Serial.println(((String) "stepping at ") + feedrate + " steps per mm...");
     step(step_pins, feedrate, directions);
-    if (directions & 1) {
+    if (directions & 1<<1) {
       // M100 -- swipe motor 2 side to side
-      motor::slide_vat();
+      motor::slide_vat(1, step_pins[1], feedrate);
     }
   }
 }
