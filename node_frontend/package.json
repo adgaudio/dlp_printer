@@ -4,9 +4,10 @@
   "description": "Software for integrating with a DLP Printer",
   "author": "Alex Gaudio",
   "dependencies": {
-    "serialport": "latest",
+    "byline": "~4.2.1",
     "colors": "latest",
-    "yargs": "~1.3.3",
-    "byline": "~4.2.1"
+    "serialport": "latest",
+    "sleep": "^2.0.0",
+    "yargs": "~1.3.3"
   }
 }
