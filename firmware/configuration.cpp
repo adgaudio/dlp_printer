@@ -47,7 +47,6 @@ namespace laser {
   extern const int NUM_LASER_MOTORS = 2;
   extern const int LASER_POWER_PIN = 3;
   extern const int LASER_GALVO_POWER_PIN = 2;  // TODO: use analog instead?
-  extern const int LASER_XY_PINS[] = {1, 2};  // analog pins
 
   // The i2c address to the DACs that control the laser galvos. format: {x, y}
   // For MCP4725[A0] the address is 0x60 or 0x61

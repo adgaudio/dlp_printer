@@ -15,7 +15,6 @@ namespace laser {
   extern const int NUM_LASER_MOTORS;
   extern const int LASER_POWER_PIN;
   extern const int LASER_GALVO_POWER_PIN;
-  extern const int LASER_XY_PINS[]; // analog pins
   extern const uint8_t DEVICE_ADDRS[];
 }
 

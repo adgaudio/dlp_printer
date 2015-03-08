@@ -8,9 +8,7 @@ namespace laser {
 
   void configure() {
     /* Initial settings for Laser pins */
-    for (int i=0; i<2; i++) {
-      pinMode(LASER_XY_PINS[i], OUTPUT);
-    }
+
     // ensure laser is powered off
     pinMode(LASER_POWER_PIN, OUTPUT);
     digitalWrite(LASER_POWER_PIN, LOW);  // off by default
