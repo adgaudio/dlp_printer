@@ -34,7 +34,7 @@ PrinterState.prototype.set = function(event) {
   function _set(thing, state) {
     var ev = thing + "_" + state;
     _this.emit(ev);
-    log("set state: " + ev);
+    log.debug("set state: " + ev);
   }
   if (thing === "all") {
     _this.components.forEach(function(thing) {

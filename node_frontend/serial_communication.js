@@ -88,6 +88,7 @@ module.exports.msg_pack = function(gcode) {
   /* Build a message to send to the Arduino */
   var move = _msg_pack_ismove(gcode);
   var msg = new Buffer(_msg_pack_get_buflen(move));
+  msg.fill(0);
   var byte_offset = 0;
   msg.writeUInt8(_msg_pack_instructions(gcode, move), byte_offset++);
 
@@ -208,11 +209,12 @@ function send(sp, msg) {
   * If successfully sent 2 messages in a row, assume printer is healthy
   * and reset the resend count.
   */
+  log.debug("running: " + JSON.stringify(msg));
   if (PRINTER_CACHE.n_resends > 3) {
     state.set("all_off");
     throw "Just resent the same message 3x in a row.  msg: " + msg.toJSON();
   } else if (PRINTER_CACHE.please_resend) {
-    log("Resending last serial message: " + PRINTER_CACHE.last_msg.toJSON());
+    log.warn("Resending last serial message: " + PRINTER_CACHE.last_msg.toJSON());
     PRINTER_CACHE.please_resend = false;
     inc("n_resends", PRINTER_CACHE);
     send(sp, PRINTER_CACHE.last_msg);
@@ -243,7 +245,7 @@ function _send(sp, msg) {
       if (err) {
       _send_handle_err(err);
       } else {
-        log('sent bytes: ' + msg.toJSON());
+        log('sent bytes: ' + JSON.stringify(msg));
         if (inc("comm_succ", PRINTER_CACHE) >= 2) {
           PRINTER_CACHE.comm_succ = 0;
           PRINTER_CACHE.n_resends = 0;
@@ -251,9 +253,8 @@ function _send(sp, msg) {
       }
     });
   });
+  sp.drain();
   PRINTER_CACHE.last_msg = msg;
-  var sleep = require('sleep');
-  sleep.sleep(1);
 }
 
 

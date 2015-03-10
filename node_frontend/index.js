@@ -19,17 +19,21 @@ function parse_line(gcode_str) {
   var l = gcode_str.split(';');  // [gcode, comment]
   if (l[1]) {  // log comments in gcode
     GCode.comment = l[1];
-    gcode.log(GCode.comment);
+    log.gcode("comment: " + GCode.comment);
   }
-  var _gcode = l[0].split(/\s+/);
-  GCode.instruction = _gcode.shift();  // G0 G1 M100 etc
+  if (l[0]) {
+    var _gcode = l[0].split(/\s+/);
+    GCode.instruction = _gcode.shift();  // G0 G1 M100 etc
 
-  var regexp = /([A-z]+)([0-9]+)/
-  _gcode.forEach(function(code) {
-    var m = regexp.exec(code);
-    GCode[m[1]] = parseInt(m[2], 10);
-  });
-  log.gcode(JSON.stringify(GCode));
+    var regexp = /([A-z]+)([0-9]+)/
+    _gcode.forEach(function(code) {
+      var m = regexp.exec(code);
+      GCode[m[1]] = parseInt(m[2], 10);
+    });
+    log.gcode(JSON.stringify(GCode));
+  } else {
+    GCode.skip = true;
+  }
   return GCode
 }
 
@@ -54,10 +58,11 @@ function send_serial(sp) {
   stream.on('data', function(line) {
     // if (comment) { log.gcode(comment); }
     var gcode = parse_line(line.toString());
-    if (!gcode) {
+    if (gcode.skip) {
       return;
     }
     msg = serial.msg_pack(gcode)
+
     serial.send(sp, msg)
     // TODO: handle what happens when state emits motors_on|off,  etc
   });
