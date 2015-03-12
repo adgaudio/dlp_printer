@@ -82,12 +82,15 @@ namespace motor {
 
   void slide_vat(int motor_idx, long nsteps, int feedrate) {
     /* Slide the vat side to side */
-    long delay_bt_steps = nsteps / feedrate;
+    if (feedrate <= 2) {
+      util::fail("slide_vat: feedrate too small")
+    }
     while (nsteps-- > 0) {
       digitalWrite(MOTOR_DIR_PINS[motor_idx], HIGH);
       delayMicroseconds(2);
       digitalWrite(MOTOR_DIR_PINS[motor_idx], LOW);
-      delayMicroseconds(delay_bt_steps - 2);
+      delayMicroseconds(feedrate - 2);
+      wdt_reset (); // reset watchdog counter
     }
   }
 }

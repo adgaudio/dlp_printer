@@ -104,16 +104,15 @@ void loop() {
       byte b = util::serial_read_byte();
       byte c = util::serial_read_byte();
       i = motor::NUM_MOTORS;
-      step_pins[i] = (long) (a << 4) | (b >> 4);  // laser X
-      step_pins[++i] = (long) ((b & 0x0F) << 8) | c;  // laser y
+      step_pins[i] = (((long) a) << 4) | (b >> 4);  // laser X
+      step_pins[++i] = (((long) b & 0x0F) << 8) | c;  // laser y
     }
-    delete &i;
     // TODO: remove debug:
     Serial.println(((String) "stepping at ") + feedrate + " steps per mm...");
     step(step_pins, feedrate, directions);
     if (directions & 1<<1) {
       // M100 -- swipe motor 2 side to side
-      motor::slide_vat(1, step_pins[1], feedrate);
+      motor::slide_vat(0, step_pins[0], feedrate);
     }
   }
 }
@@ -134,17 +133,23 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
        move.  Each element of the array corresponds to motor pins to pulse.
        Pass motor pins first and then laser pins second.
      `feedrate` is a long (4 byte int) specifying the speed at which to move
-       the motors (in # steps per microsecond).
+       the motors (in # microseconds per step).
    */
   unsigned long total_num_steps = util::lcm(steps_per_pin, main::NUM_STEP_PINS);
+  // if we assume feedrate is in microseconds per step
+  // TODO: change feedrate to microseconds per step
+  // TODO: apply this to slide_vat
   unsigned long delay_between_steps =  // in microseconds
-    util::maxarr(steps_per_pin, main::NUM_STEP_PINS) / feedrate;
+    feedrate * util::maxarr(steps_per_pin, main::NUM_STEP_PINS)
+    / total_num_steps;
 
   if (delay_between_steps >= WDT_DELAY) {
-    util::fail("step(): Too much delay between motor pulses. Try increasing the"
+    util::fail(
+        "step(): Too much delay between motor pulses. Try increasing the"
         " steps_per_pin values or reducing the total travel time");
   } else if (delay_between_steps < 2) {
-    util::fail("step(): Not enough delay between motor pulses.  Try decreasing the"
+    util::fail(
+        "step(): Not enough delay between motor pulses.  Try decreasing the"
         " steps_per_pin values or increasing the total travel time");
   }
   // for each pin, a pulse comes every cnt steps

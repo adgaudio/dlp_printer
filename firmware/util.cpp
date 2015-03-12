@@ -24,6 +24,7 @@ namespace util {
   void fail(String msg="<unknown error>") {
     /* force hang & reset */
     Serial.println("Fail: " + msg);
+    Serial.flush();
     wdt_enable(WDTO_15MS);
     while (1) { }
   }
