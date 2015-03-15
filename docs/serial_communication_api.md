@@ -25,7 +25,7 @@ Steps:
 
   - If move motors == yes or move lasers == yes, message must
     proceed with:
-    - (int_32: feedrate, or the "steps per microsecond" speed to use)
+    - (int_32: feedrate, or the "microseconds per step" speed to use)
     - 1 byte specifying motor directions:
       (4 bits: empty)
       (1 bit: laser_galvo_x dir 1=forward|0=backward)  // 1<<3

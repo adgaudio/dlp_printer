@@ -86,7 +86,7 @@ void loop() {
 
     if (instructions & 3) {  // receive feedrate and directions
       /* Serial.println("get feedrate & directions"); */
-      // how fast to move motors|galvos?  in steps per microsecond
+      // how fast to move motors|galvos?  in microseconds per step
       feedrate = util::serial_read_long();
       // move motors or galvos forward|backward?
       directions = util::serial_read_byte();
@@ -132,7 +132,7 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
      Move motors and laser galvos simultaneously...
 
      For each motor pin, pulse a high-low sequence once per step over the
-     course of `feedrate` steps per microsecond. For each laser galvo, call the
+     course of `feedrate` microseconds per step. For each laser galvo, call the
      laser::step(...) function.  Pulses happen as close to concurrently as
      possible.  Accurate timing is not guaranteed due to interrupts and time
      spent running computations.  You can compensate for this at the software
