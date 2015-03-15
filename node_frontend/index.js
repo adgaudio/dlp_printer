@@ -2,14 +2,16 @@ var byline = require("byline");
 var fs = require('fs');
 var repl = require("repl");
 var yargs = require("yargs");
+
+var log = require("./log.js");
+var serial = require("./serial_communication.js");
 // global singleton func that sets and determines the current state of the
 // arduino board
-var log = require("./log.js");
 var state = require("./printer_state.js");
-var serial = require("./serial_communication.js");
 
 var REPL_STARTED = false;
 var PRINT_STARTED = false;
+var STREAM;
 
 
 function parse_line(gcode_str) {
@@ -38,7 +40,7 @@ function parse_line(gcode_str) {
 }
 
 
-function send_serial() {
+function send_serial(fp) {
   /*
    * 1. open gcode file
    * 2. for line in file, convert to printer instructions
@@ -46,28 +48,32 @@ function send_serial() {
    *
    * -- if unrecognized instruction, raise warning
    */
-
-  var stream = byline(fs.createReadStream(argv.fp));
-  stream.on('end', function() {
-    // send 3 times to guarantee no errors
-    serial.send("end of stream");
-    serial.send("end of stream");
-    serial.send("end of stream");
-    state.set('all_off');
-    serial.close_connection();
-  });
-  stream.on('data', function(line) {
-    // if (comment) { log.gcode(comment); }
-    var gcode = parse_line(line.toString());
-    if (gcode.skip) {
-      return;
+  if (STREAM) {
+    log.warn("resuming gcode transmission");
+  } else {
+    log("starting gcode transmission")
+    STREAM = fs.createReadStream(fp);
+    STREAM = byline.createStream(STREAM);
+    // STREAM = byline(fs.createReadStream(fp));
+    STREAM.on('end', function() {
+      serial.send("end of gcode transmission");
+      serial.close_connection();
+    });
+  }
+  STREAM.on('readable', function() {
+    var line;
+    while (null !== (line = STREAM.read())) {
+      var gcode = parse_line(line.toString());
+      if (!gcode.skip) {
+        msg = serial.msg_pack(gcode);
+        serial.send(msg);
+      }
     }
-    msg = serial.msg_pack(gcode)
-    serial.send(msg)
   });
 }
 
-function main() {
+
+function main(argv) {
   serial.open_connection(argv.serialport, argv.baudrate);
   state.on('all_on', function() {
     if (argv.fp == "repl") {
@@ -82,12 +88,11 @@ function main() {
     } else if (!PRINT_STARTED) {
       log("Starting print");
       PRINT_STARTED = true;
-      send_serial();
+      send_serial(argv.fp);
     } else {
       log("Arduino reset while print in progress.  Will hopefully recover.");
     }
   });
-  // TODO: state.on('all_off', function() {});
 }
 
 function parse_argv() {
@@ -118,5 +123,4 @@ function parse_argv() {
 }
 
 // execute main function
-var argv = parse_argv();
-main(argv);
+main(parse_argv());

@@ -12,6 +12,7 @@ var SP;  // serialport connection to arduino
 module.exports.close_connection = function() {
   if (SP) {
     log('closing connection to arduino')
+    // SP.drain();  // TODO: necessary?
     SP.close();
   } else {
     throw "You must open the connection before you can close it!"
@@ -141,7 +142,7 @@ function _send(msg) {
     _send_handle_err(err);
     SP.drain(function(err) {
       if (err) {
-      _send_handle_err(err);
+        _send_handle_err(err);
       } else {
         log('sent bytes: ' + JSON.stringify(msg));
         if (inc("comm_succ", SERIAL_CACHE) >= 2) {
@@ -151,7 +152,10 @@ function _send(msg) {
       }
     });
   });
-  SP.drain();
+  SP.drain(function(err) {
+    if (err) {
+      _send_handle_err(err);
+    }});
   SERIAL_CACHE.last_msg = msg;
 }
 
