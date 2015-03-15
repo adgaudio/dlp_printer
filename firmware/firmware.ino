@@ -47,6 +47,7 @@ void loop() {
 
   // read data from serial
   if (Serial.available()) {
+    /* Serial.println("get instructions"); */
     // initialize variables
     byte instructions = util::serial_read_byte();
     unsigned long feedrate;
@@ -84,6 +85,7 @@ void loop() {
     }
 
     if (instructions & 3) {  // receive feedrate and directions
+      /* Serial.println("get feedrate & directions"); */
       // how fast to move motors|galvos?  in steps per microsecond
       feedrate = util::serial_read_long();
       // move motors or galvos forward|backward?
@@ -92,12 +94,14 @@ void loop() {
     // get num steps to move motors|laser_galvos
     int i;  // pin index for motors and lasers
     if (instructions & 2) {
+      /* Serial.println("get motor steps"); */
       // how many steps to move motors?
       for (i=0; i<motor::NUM_MOTORS; i++) {
         step_pins[i] = util::serial_read_long();
       }
     }
     if (instructions & 1) {
+      /* Serial.print("get galvo steps"); */
       // how many steps to move laser galvos?
       // assume exactly 2 laser galvos exist (x and y)
       byte a = util::serial_read_byte();
@@ -108,9 +112,14 @@ void loop() {
       step_pins[++i] = (((long) b & 0x0F) << 8) | c;  // laser y
     }
     // TODO: remove debug:
-    Serial.println(((String) "stepping at ") + feedrate + " steps per mm...");
+    /* Serial.println((String) "feedrate: " + feedrate); */
+    /* Serial.println((String) "Z: " + step_pins[0]); */
+    /* Serial.println((String) "S: " + step_pins[1]); */
+    /* Serial.println((String) "X: " + step_pins[2]); */
+    /* Serial.println((String) "Y: " + step_pins[3]); */
     step(step_pins, feedrate, directions);
     if (directions & 1<<1) {
+      /* Serial.println((String) "slide vat " + step_pins[1] + "steps"); */
       // M100 -- swipe motor 2 side to side
       motor::slide_vat(0, step_pins[0], feedrate);
     }
@@ -136,12 +145,11 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
        the motors (in # microseconds per step).
    */
   unsigned long total_num_steps = util::lcm(steps_per_pin, main::NUM_STEP_PINS);
-  // if we assume feedrate is in microseconds per step
-  // TODO: change feedrate to microseconds per step
-  // TODO: apply this to slide_vat
   unsigned long delay_between_steps =  // in microseconds
     feedrate * util::maxarr(steps_per_pin, main::NUM_STEP_PINS)
     / total_num_steps;
+  /* Serial.print("delay_bt_steps: "); Serial.println(delay_between_steps); */
+  /* Serial.println((String) "lcm: " + total_num_steps); */
 
   if (delay_between_steps >= WDT_DELAY) {
     util::fail(
@@ -154,8 +162,8 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
   }
   // for each pin, a pulse comes every cnt steps
   // initialize a count for each motor
-  unsigned int counter_max[main::NUM_STEP_PINS];
-  unsigned int counters[main::NUM_STEP_PINS];
+  unsigned long counter_max[main::NUM_STEP_PINS];
+  unsigned long counters[main::NUM_STEP_PINS];
   int j;
   for (j=0; j<main::NUM_STEP_PINS ; j++) {
     counter_max[j] = total_num_steps / steps_per_pin[j];
@@ -187,9 +195,8 @@ void step(unsigned long steps_per_pin[], unsigned long feedrate,
     for (j=motor::NUM_MOTORS; j < main::NUM_STEP_PINS ; j++) {
       if (++counters[j] >= counter_max[j]) {
         int laser_idx = j - motor::NUM_MOTORS;
-        laser::step(
-            laser_idx,
-            (directions >> motor::NUM_MOTORS) & (1<<laser_idx));
+        laser::step(laser_idx, (directions >> j) & 0x01);
+        counters[j] = 0;
       }
     }
     delayMicroseconds(delay_between_steps);

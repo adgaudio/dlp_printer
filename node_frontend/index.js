@@ -25,7 +25,7 @@ function parse_line(gcode_str) {
     var _gcode = l[0].split(/\s+/);
     GCode.instruction = _gcode.shift();  // G0 G1 M100 etc
 
-    var regexp = /([A-z]+)([0-9]+)/
+    var regexp = /([A-z]+)(\-?[0-9]+)/
     _gcode.forEach(function(code) {
       var m = regexp.exec(code);
       GCode[m[1]] = parseInt(m[2], 10);
@@ -38,7 +38,7 @@ function parse_line(gcode_str) {
 }
 
 
-function send_serial(sp) {
+function send_serial() {
   /*
    * 1. open gcode file
    * 2. for line in file, convert to printer instructions
@@ -50,10 +50,11 @@ function send_serial(sp) {
   var stream = byline(fs.createReadStream(argv.fp));
   stream.on('end', function() {
     // send 3 times to guarantee no errors
-    serial.send(sp, "end of stream");
-    serial.send(sp, "end of stream");
-    serial.send(sp, "end of stream");
+    serial.send("end of stream");
+    serial.send("end of stream");
+    serial.send("end of stream");
     state.set('all_off');
+    serial.close_connection();
   });
   stream.on('data', function(line) {
     // if (comment) { log.gcode(comment); }
@@ -62,14 +63,12 @@ function send_serial(sp) {
       return;
     }
     msg = serial.msg_pack(gcode)
-
-    serial.send(sp, msg)
-    // TODO: handle what happens when state emits motors_on|off,  etc
+    serial.send(msg)
   });
 }
 
 function main() {
-  var sp = serial.get_connection(argv.serialport, argv.baudrate);
+  serial.open_connection(argv.serialport, argv.baudrate);
   state.on('all_on', function() {
     if (argv.fp == "repl") {
       if (!REPL_STARTED) {
@@ -83,7 +82,7 @@ function main() {
     } else if (!PRINT_STARTED) {
       log("Starting print");
       PRINT_STARTED = true;
-      send_serial(sp);
+      send_serial();
     } else {
       log("Arduino reset while print in progress.  Will hopefully recover.");
     }

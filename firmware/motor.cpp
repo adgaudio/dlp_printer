@@ -80,10 +80,10 @@ namespace motor {
   }
 
 
-  void slide_vat(int motor_idx, long nsteps, int feedrate) {
+  void slide_vat(int motor_idx, unsigned long nsteps, unsigned long feedrate) {
     /* Slide the vat side to side */
     if (feedrate <= 2) {
-      util::fail("slide_vat: feedrate too small")
+      util::fail((String) "slide_vat: feedrate too small: " + feedrate);
     }
     while (nsteps-- > 0) {
       digitalWrite(MOTOR_DIR_PINS[motor_idx], HIGH);

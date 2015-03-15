@@ -3,7 +3,7 @@
 namespace laser {
   // Starting position of the laser galvos.  {xpos, ypos}
   // The chip is pre-programmed to dead center
-  uint16_t PHASE[] = {0x800, 0x800};  // 2048
+  int16_t PHASE[] = {0x800, 0x800};  // 2048
 
 
   void configure() {
@@ -50,7 +50,8 @@ namespace laser {
     /* Move the x or y laser galvo forward or backward one step.*/
     PHASE[x_or_y] += forward;
     if ((PHASE[x_or_y] > 4095) || (PHASE[x_or_y] < 0)) {
-      util::fail("laser move out of bounds");
+      util::fail(
+          (String) "galvo " + x_or_y + " out of bounds at " + PHASE[x_or_y]);
     }
     set_voltage(PHASE[x_or_y], DEVICE_ADDRS[x_or_y]);
   }

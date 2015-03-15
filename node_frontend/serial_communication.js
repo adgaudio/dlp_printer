@@ -5,22 +5,34 @@ var log = require("./log.js");
 var state = require("./printer_state.js");
 
 var PRINTER_CACHE = function() {};  // stores current position data
+var SP;  // serialport connection to arduino
 
 
-module.exports.get_connection = function(serialport, baudrate) {
+module.exports.close_connection = function() {
+  if (SP) {
+    log('closing connection to arduino')
+    SP.close();
+  } else {
+    throw "You must open the connection before you can close it!"
+  }
+
+}
+
+
+module.exports.open_connection = function(serialport, baudrate) {
   if (!serialport) {
     list_ports_and_exit();
     process.exit(1);
   }
   // Connect to Arduino
-  var sp = new com.SerialPort(serialport, {
+  SP = new com.SerialPort(serialport, {
     baudRate: baudrate,
     parser: com.parsers.readline("\n")
   });
 
   // init serial and then starts reading/writing data
-  init_serial(sp);
-  return sp;
+  init_serial();
+  return SP;
 }
 
 
@@ -41,10 +53,10 @@ function list_ports_and_exit() {
 }
 
 
-function init_serial(sp) {
+function init_serial() {
   /* Initialize the arduino.
   * Define how to handle messages from the serial port */
-  sp.on('open', function(err) {
+  SP.on('open', function(err) {
     if (err) {
       state.set("all_off");
       log.error('failed to open serial port: '+ err);
@@ -52,14 +64,14 @@ function init_serial(sp) {
     }
     log('opened Serial port');
 
-    sp.on('data', function(rawmsg) {handle_incoming_data(rawmsg, sp);});
-    sp.on('error', function(err) {
+    SP.on('data', function(rawmsg) {handle_incoming_data(rawmsg);});
+    SP.on('error', function(err) {
       state.set("all_off");
       if (err) {
         log.error('something related to arduino failed!');
         throw err;
       }});
-    sp.on('close', function(err) {
+    SP.on('close', function(err) {
       state.set("all_off");
       if (err) {
         log.error('arduino connection closed with failure!');
@@ -69,7 +81,7 @@ function init_serial(sp) {
 }
 
 
-function handle_incoming_data(rawmsg, sp) {
+function handle_incoming_data(rawmsg) {
   /* Define what to do when the Arduino sends a Serial message */
   var msg = rawmsg.toString('utf-8').trim()
   if (msg) {
@@ -94,7 +106,10 @@ module.exports.msg_pack = function(gcode) {
 
   if (move.motor || move.laser_galvo) {
     // feedrate: how fast to move in #steps per microsecond
-    PRINTER_CACHE.feedrate = gcode.F | 0x0;
+    if (gcode.F) {
+      PRINTER_CACHE.feedrate = Math.abs(gcode.F) | 0x0;
+    }
+    log("feedrate " + PRINTER_CACHE.feedrate);
     msg.writeUInt32BE(PRINTER_CACHE.feedrate, byte_offset);
     byte_offset += 4;
     // which direction to move motors and galvos
@@ -102,10 +117,10 @@ module.exports.msg_pack = function(gcode) {
   }
   if (move.motor) {
     // How many steps to move motors
-    msg.writeUInt32BE(gcode.S | 0x0, byte_offset);  // slides vat side to side
+    PRINTER_CACHE.Z += (Math.abs(gcode.Z) | 0x0);  // store last val
+    msg.writeUInt32BE(Math.abs(gcode.Z) | 0x0, byte_offset);
     byte_offset += 4;
-    PRINTER_CACHE.Z += (gcode.Z | 0x0);  // store last val
-    msg.writeUInt32BE(gcode.Z | 0x0, byte_offset);
+    msg.writeUInt32BE(Math.abs(gcode.S) | 0x0, byte_offset);  // slides vat side to side
     byte_offset += 4;
   }
   if (move.laser_galvo) {
@@ -113,9 +128,10 @@ module.exports.msg_pack = function(gcode) {
     // TODO: is this way of controlling galvos appropriate?
     // assumes X and Y must be 12 bit numbers
     msg.writeUInt16BE(
-      ((gcode.Y & 0x0FFF) << 4) | ((gcode.X & 0x0F00) >> 8), byte_offset);
+      ((Math.abs(gcode.X) & 0x0FFF) << 4)
+        | ((Math.abs(gcode.Y) & 0x0F00) >> 8), byte_offset);
     byte_offset += 2;
-    msg.writeUInt8(gcode.X & 0x00FF, byte_offset++);
+    msg.writeUInt8(Math.abs(gcode.Y) & 0x00FF, byte_offset++);
   }
   return msg;
 }
@@ -199,7 +215,7 @@ function _msg_pack_directions(gcode) {
 }
 
 
-function send(sp, msg) {
+function send(msg) {
   /* Write an n-byte buffer to the serial port, and flush (ie drain) it to
   * ensure it fully sends.
   *
@@ -217,12 +233,12 @@ function send(sp, msg) {
     log.warn("Resending last serial message: " + PRINTER_CACHE.last_msg.toJSON());
     PRINTER_CACHE.please_resend = false;
     inc("n_resends", PRINTER_CACHE);
-    send(sp, PRINTER_CACHE.last_msg);
+    send(PRINTER_CACHE.last_msg);
   }
   if (msg == "end of stream") {
     return;
   } else {
-    _send(sp, msg);
+    _send(msg);
   }
 }
 module.exports.send = send;
@@ -237,11 +253,11 @@ var _send_handle_err = function(err) {
 }
 
 
-function _send(sp, msg) {
+function _send(msg) {
   // actually send msg to serial and drain (flush) the serial port buffer
-  sp.write(msg, function(err) {
+  SP.write(msg, function(err) {
     _send_handle_err(err);
-    sp.drain(function(err) {
+    SP.drain(function(err) {
       if (err) {
       _send_handle_err(err);
       } else {
@@ -253,7 +269,7 @@ function _send(sp, msg) {
       }
     });
   });
-  sp.drain();
+  SP.drain();
   PRINTER_CACHE.last_msg = msg;
 }
 

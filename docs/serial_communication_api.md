@@ -28,15 +28,15 @@ Steps:
     - (int_32: feedrate, or the "steps per microsecond" speed to use)
     - 1 byte specifying motor directions:
       (4 bits: empty)
-      (1 bit: laser_galvo_y dir 1=forward|0=backward)  // 1<<3
-      (1 bit: laser_galvo_x dir 1=forward|0=backward)  // 1<<2
-      (1 bit: motor_2 dir 1=forward|0=backward)  // 1<<1
+      (1 bit: laser_galvo_x dir 1=forward|0=backward)  // 1<<3
+      (1 bit: laser_galvo_y dir 1=forward|0=backward)  // 1<<2
+      (1 bit: motor_0 dir 1=forward|0=backward)  // 1<<1
       (1 bit: motor_1 dir 1=forward|0=backward)  // 1  ... aka M100, or slide vat side to side.
   - If move motors == yes, message must proceed with:
-    - (int_32: num steps motor 2)  // z axis
+    - (int_32: num steps motor 0)  // z axis
     - (int_32: num steps motor 1)  // moves the vat
   - If move laser galvos, the message must proceed with:
-    - (int_12: y position)
     - (int_12: x position)
+    - (int_12: y position)
 
 Happy printing!
